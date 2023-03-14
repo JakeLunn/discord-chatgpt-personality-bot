@@ -1,16 +1,11 @@
-﻿using Discord;
-using Discord.Rest;
-using Discord.WebSocket;
+﻿using Discord.Rest;
 using DiscordChatGPT.Exceptions;
-using DiscordChatGPT.Models;
 using DiscordChatGPT.Options;
 using DiscordChatGPT.Services;
-using DiscordChatGPT.Utility;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 
 namespace DiscordChatGPT;
@@ -70,12 +65,12 @@ public class TimedHostedService : IHostedService, IDisposable
             return;
         }
 
-        var currentDate = DateTimeOffset.Now;
-        var sleepTimeStart = new DateTimeOffset(currentDate.Year, currentDate.Month, currentDate.Day, 22, 0, 0, currentDate.Offset); // 10 PM
-        var sleepTimeEnd = new DateTimeOffset(currentDate.Year, currentDate.Month, currentDate.Day, 9, 0, 0, currentDate.Offset); // 9 AM
-        if (currentDate > sleepTimeStart || currentDate < sleepTimeEnd)
+        var currentDate = DateTime.Now;
+        var sleepTimeStart = new TimeSpan(22, 0, 0);
+        var sleepTimeEnd = new TimeSpan(9, 0, 0);
+        if (currentDate.TimeOfDay > sleepTimeStart || currentDate.TimeOfDay < sleepTimeEnd)
         {
-            _logger.LogInformation("Bot is between sleep hours of {StartTime:T} and {EndTime:T} and will not send messages.", sleepTimeStart, sleepTimeEnd);
+            _logger.LogInformation("Bot is between sleep hours of {StartTime:c} and {EndTime:c} and will not send messages.", sleepTimeStart, sleepTimeEnd);
             return;
         }
 

@@ -25,7 +25,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
     {
         var socketConfig = new DiscordSocketConfig()
         {
-            GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent
+            GatewayIntents = GatewayIntents.MessageContent | GatewayIntents.AllUnprivileged
         };
 
         services
@@ -68,24 +68,39 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
 
     socketClient.Log += async (msg) =>
     {
-        await Task.CompletedTask;
         if (msg.Severity == Discord.LogSeverity.Error)
         {
             logger.LogError(msg.Exception, msg.Message);
         }
 
         logger.LogInformation(msg.Message);
+        await Task.CompletedTask;
     };
 
     socketClient.SlashCommandExecuted += async interaction =>
     {
         var ctx = new SocketInteractionContext(socketClient, interaction);
-        await interactionService.ExecuteCommandAsync(ctx, serviceProvider);
+        using (logger.BeginScope(interaction.Data.Name))
+        {
+            await interactionService.ExecuteCommandAsync(ctx, serviceProvider);
+        }
     };
 
     socketClient.GuildAvailable += async guild =>
     {
         await interactionService.RegisterCommandsToGuildAsync(guild.Id, true);
+    };
+
+    socketClient.MessageReceived += async message =>
+    {
+        // Message is @ the bot
+        if (message.MentionedUsers.Any(u => u.Id == socketClient.CurrentUser.Id))
+        {
+            var orc = serviceProvider.GetRequiredService<BotOrchestrator>();
+            await orc.RespondToMentionAsync(message);
+        }
+        
+        await Task.CompletedTask;
     };
     
     await restClient.LoginAsync(Discord.TokenType.Bot, _discordToken);
@@ -96,6 +111,8 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
     serviceProvider
         .GetRequiredService<DataService>()
         .CheckConnection();
+
+    logger.LogInformation("DB Connection Check successful");
 
     await socketClient.StartAsync();
 }

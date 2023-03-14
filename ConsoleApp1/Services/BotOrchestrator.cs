@@ -1,7 +1,9 @@
 ﻿using Discord;
 using Discord.Rest;
+using Discord.WebSocket;
 using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Models;
+using DiscordChatGPT.Modelsl;
 using DiscordChatGPT.Utility;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -95,11 +97,11 @@ public class BotOrchestrator
             .OrderBy(c => c.Timestamp)
             .ToList();
 
-        var response = await OpenAiService.ChatGpt(chatGptMessages);
+        var (success, responseMessage) = await OpenAiService.ChatGpt(chatGptMessages);
 
-        if (response.success)
+        if (success)
         {
-            var content = response.responseMessage.Content.TransformForDiscord();
+            var content = responseMessage.Content.TransformForDiscord();
             await channel.SendMessageAsync(content);
             _logger.LogInformation("[SENT] {Guild} => {Channel}: {ResponseMessage}", guild.Name, channel.Name, content);
 
@@ -107,7 +109,45 @@ public class BotOrchestrator
         }
         else
         {
-            _logger.LogError("Failed to send response due to error from OpenAI: {Error}", response.responseMessage.Content);
+            _logger.LogError("Failed to send response due to error from OpenAI: {Error}", responseMessage.Content);
         }
+    }
+
+    public async Task RespondToMentionAsync(SocketMessage message)
+    {
+        var contextMessages = new List<ChatGPTMessage>();
+
+        // Add System Prompt
+        contextMessages.Add(new ChatGPTMessage(ChatGPTRole.system, Constants.StartingPromptText));
+
+        var channelMessages = await message.Channel
+            .GetMessagesAsync(20)
+            .FlattenAsync();
+
+        // No empty messages
+        channelMessages = channelMessages
+            .Where(m => !string.IsNullOrWhiteSpace(m.CleanContent))
+            .ToList();
+
+        foreach (var msg in channelMessages)
+        {
+            contextMessages.Add(new ChatGPTMessage(ChatGPTRole.user, $"{msg.Author.Mention}: {msg.CleanContent}"));
+        }
+
+        contextMessages.Add(new ChatGPTMessage(ChatGPTRole.user, $"{message.Author.Mention}: {message.CleanContent}"));
+
+        contextMessages.Add(new ChatGPTMessage(ChatGPTRole.system, $"Reply to the message from {message.Author.Mention}. " +
+            $"Remember to strictly follow the rules."));
+
+        var (success, responseMessage) = await OpenAiService.ChatGpt(contextMessages);
+        
+        if (!success)
+        {
+            _logger.LogError("Error encountered from Open AI Service: {Error}", responseMessage.Content);
+            return;
+        }
+
+        var content = responseMessage.Content.TransformForDiscord();
+        await message.Channel.SendMessageAsync(content);
     }
 }
