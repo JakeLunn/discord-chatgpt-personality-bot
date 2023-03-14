@@ -86,11 +86,6 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
         }
     };
 
-    socketClient.GuildAvailable += async guild =>
-    {
-        await interactionService.RegisterCommandsToGuildAsync(guild.Id, true);
-    };
-
     socketClient.MessageReceived += async message =>
     {
         // Message is @ the bot
@@ -101,6 +96,11 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
         }
         
         await Task.CompletedTask;
+    };
+
+    socketClient.Ready += async () =>
+    {
+        await interactionService.RegisterCommandsGloballyAsync(true);
     };
     
     await restClient.LoginAsync(Discord.TokenType.Bot, _discordToken);
