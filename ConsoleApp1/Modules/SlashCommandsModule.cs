@@ -16,12 +16,17 @@ public class SlashCommandsModule : InteractionModuleBase
     private readonly IMemoryCache _cache;
     private readonly ILogger<SlashCommandsModule> _logger;
     private readonly DataService _dataService;
+    private readonly BotOrchestrator _botOrchestrator;
 
-    public SlashCommandsModule(IMemoryCache cache, ILogger<SlashCommandsModule> logger, DataService dataService)
+    public SlashCommandsModule(IMemoryCache cache, 
+        ILogger<SlashCommandsModule> logger, 
+        DataService dataService,
+        BotOrchestrator botOrchestrator)
     {
         _cache = cache;
         _logger = logger;
         _dataService = dataService;
+        _botOrchestrator = botOrchestrator;
     }
 
     [SlashCommand("ping",
@@ -78,6 +83,17 @@ public class SlashCommandsModule : InteractionModuleBase
             m.Content = "Unregistered channel successfully. To re-register channel, try /register";
             m.Flags = MessageFlags.None;
         });
+    }
+
+    [SlashCommand("trigger-alex", 
+        "Trigger AlexGPT to respond to the current conversation")]
+    public async Task TriggerAlexGPT()
+    {
+        await DeferAsync(true);
+
+        await _botOrchestrator.RespondToChannelAsync(Context.Guild.Id, Context.Channel.Id);
+
+        await DeleteOriginalResponseAsync();
     }
 
     [SlashCommand("chatgpt",

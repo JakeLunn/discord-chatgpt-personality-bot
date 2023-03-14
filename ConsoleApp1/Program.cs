@@ -35,6 +35,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
             .AddSingleton(new DiscordSocketClient(socketConfig))
             .AddSingleton<DiscordRestClient>()
             .AddSingleton<DataService>()
+            .AddSingleton<BotOrchestrator>()
             .AddHostedService<TimedHostedService>()
             .Configure<DataServiceOptions>(host.Configuration.GetSection(nameof(DataServiceOptions)))
             .Configure<TimedHostOptions>(host.Configuration.GetSection(nameof(TimedHostOptions)));

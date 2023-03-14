@@ -5,6 +5,7 @@ using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Models;
 using DiscordChatGPT.Options;
 using DiscordChatGPT.Services;
+using DiscordChatGPT.Utility;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,7 @@ public class TimedHostedService : IHostedService, IDisposable
     private readonly DiscordRestClient _client;
     private readonly IMemoryCache _cache;
     private readonly DataService _db;
+    private readonly BotOrchestrator _botOrchestrator;
     private readonly IOptions<TimedHostOptions> _options;
     private readonly static Random _random = new();
     private Timer? _timer = null;
@@ -29,12 +31,14 @@ public class TimedHostedService : IHostedService, IDisposable
         DiscordRestClient client,
         IMemoryCache cache,
         DataService db,
+        BotOrchestrator botOrchestrator,
         IOptions<TimedHostOptions> options)
     {
         _logger = logger;
         _client = client;
         _cache = cache;
         _db = db;
+        _botOrchestrator = botOrchestrator;
         _options = options;
     }
 
@@ -82,90 +86,13 @@ public class TimedHostedService : IHostedService, IDisposable
             var exceptions = new List<Exception>();
             foreach (var reg in registrations)
             {
-                var guild = await _client
-                    .GetGuildAsync(reg.GuildId);
-
-                var channel = await guild
-                    .GetTextChannelAsync(reg.ChannelId);
-
-                if (guild == null || channel == null)
+                try
                 {
-                    exceptions.Add(new ChannelNotFoundException("Channel not found", reg.ChannelId));
-                    continue;
+                    await _botOrchestrator.RespondToChannelAsync(reg.GuildId, reg.ChannelId);
                 }
-
-                var messages = (await channel!.GetMessagesAsync(20).FlattenAsync())
-                    .OrderByDescending(c => c.Timestamp)
-                    .ToList();
-
-                if (messages == null || !messages.Any())
+                catch (Exception e)
                 {
-                    _logger.LogInformation("No messages found for Guild {GuildId} in Channel {ChannelId}", guild.Id, channel.Id);
-                    continue;
-                }
-
-                var cacheKey = $"LASTMESSAGE--GUILD({guild.Id})--CHANNEL({channel.Id})";
-                if (_cache.TryGetValue<ulong>(cacheKey, out var messageId))
-                {
-                    // Remove all messages which came before the most recently responded to message.
-                    messages = messages
-                        .Where(m => m.Id > messageId)
-                        .ToList();
-
-                    if (!messages.Any())
-                    {
-                        _logger.LogInformation("Number of messages for conversation was {Count} after filtering, skipping until next time.", messages?.Count);
-                        continue;
-                    }
-                }
-
-                var chatGptMessages = new List<ChatGPTMessage>
-                {
-                    new ChatGPTMessage
-                    {
-                        Role = "system",
-                        Content = Constants.StartingPromptText,
-                        Timestamp = DateTimeOffset.MinValue
-                    }
-                };
-                
-                foreach (var message in messages)
-                {
-                    chatGptMessages.Add(new ChatGPTMessage
-                    {
-                        Role = "user",
-                        Content = $"{message.Author.Mention}: {message.CleanContent}",
-                        Timestamp = message.Timestamp
-                    });
-                }
-                
-                chatGptMessages.Add(new ChatGPTMessage
-                {
-                    Role = "system",
-                    Content = $"The previous {messages.Count} messages were from the 'Shitchat' discord server. " +
-                    $"The messages are not necessarily directed at you. Please write a message as Alex " +
-                    $"that makes sense within the context of the conversation." +
-                    $"Do not start your response with \"Alex:\". You are posting to a Discord server and you do not need to state your name.",
-                    Timestamp = DateTimeOffset.Now
-                });
-
-                // Re-order messages to be ascending according to timestamp
-                chatGptMessages = chatGptMessages
-                    .OrderBy(c => c.Timestamp)
-                    .ToList();
-
-                var response = await OpenAiService.ChatGpt(chatGptMessages);
-                
-                if (response.success)
-                {
-                    await channel.SendMessageAsync(response.responseMessage.Content);
-                    _logger.LogInformation("For Guild {GuildId} in Channel {ChannelId}, Sent message: {ResponseMessage}", guild.Id, channel.Id, response.responseMessage.Content);
-
-                    _cache.Set<ulong>(cacheKey, messages.First().Id);
-                }
-                else
-                {
-                    _logger.LogError("Failed to send response due to error from OpenAI: {Error}", response.responseMessage.Content);
+                    exceptions.Add(e);
                 }
             }
 
