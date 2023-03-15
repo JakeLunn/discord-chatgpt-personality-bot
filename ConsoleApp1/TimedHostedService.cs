@@ -68,7 +68,7 @@ public class TimedHostedService : IHostedService, IDisposable
         var currentDate = DateTime.Now;
         var sleepTimeStart = new TimeSpan(22, 0, 0);
         var sleepTimeEnd = new TimeSpan(9, 0, 0);
-        if (currentDate.TimeOfDay > sleepTimeStart && currentDate.TimeOfDay < sleepTimeEnd)
+        if (currentDate.TimeOfDay > sleepTimeStart || currentDate.TimeOfDay < sleepTimeEnd)
         {
             _logger.LogInformation("Bot is between sleep hours of {StartTime:c} and {EndTime:c} and will not send messages.", sleepTimeStart, sleepTimeEnd);
             return;
