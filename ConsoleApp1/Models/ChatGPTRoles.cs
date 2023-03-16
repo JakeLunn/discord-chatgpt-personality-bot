@@ -1,4 +1,4 @@
-﻿namespace DiscordChatGPT.Modelsl;
+﻿namespace DiscordChatGPT.Models;
 
 public enum ChatGPTRole
 {

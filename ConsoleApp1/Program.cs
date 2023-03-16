@@ -38,7 +38,8 @@ using IHost host = Host.CreateDefaultBuilder(args)
             .AddSingleton<BotOrchestrator>()
             .AddHostedService<TimedHostedService>()
             .Configure<DataServiceOptions>(host.Configuration.GetSection(nameof(DataServiceOptions)))
-            .Configure<TimedHostOptions>(host.Configuration.GetSection(nameof(TimedHostOptions)));
+            .Configure<TimedHostOptions>(host.Configuration.GetSection(nameof(TimedHostOptions)))
+            .Configure<GlobalDiscordOptions>(host.Configuration.GetSection(nameof(GlobalDiscordOptions)));
 
         services.AddLogging(builder =>
         {

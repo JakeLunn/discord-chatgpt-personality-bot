@@ -1,5 +1,4 @@
-﻿using DiscordChatGPT.Modelsl;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
 namespace DiscordChatGPT.Models;
 

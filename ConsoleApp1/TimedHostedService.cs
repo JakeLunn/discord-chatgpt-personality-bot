@@ -1,4 +1,5 @@
-﻿using Discord.Rest;
+﻿using Discord;
+using Discord.Rest;
 using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Options;
 using DiscordChatGPT.Services;
@@ -51,15 +52,15 @@ public class TimedHostedService : IHostedService, IDisposable
 
     private async Task DoWorkAsync(object? state)
     {
-        var count = Interlocked.Increment(ref executionCount);
+        Interlocked.Increment(ref executionCount);
 
         _logger.LogInformation(
             "{Service} is working. Count: {Count}", nameof(TimedHostedService), executionCount);
 
-        var roll = _random.Next(10);
-        _logger.LogInformation("Rolled {Roll} out of possible 10", roll);
+        var roll = _random.Next(1, 100);
+        _logger.LogInformation("Rolled {Roll} out of possible 100. The minimum value needed is {MinimumRoll}.", roll, _options.Value.ChanceOutOf100);
 
-        if (roll > _options.Value.ChanceOutOf10 && !Debugger.IsAttached)
+        if (roll > _options.Value.ChanceOutOf100 && !Debugger.IsAttached)
         {
             _logger.LogInformation("doing nothing due to roll.");
             return;
@@ -100,12 +101,15 @@ public class TimedHostedService : IHostedService, IDisposable
         {
             ae.Handle((ex) =>
             {
-                if (ex is ChannelNotFoundException)
+                if (ex is ResourceNotFoundException resourceNotFoundException)
                 {
-                    _logger.LogWarning("Deleting {Channel} due to {Exception}", (ex as ChannelNotFoundException)?.ChannelId, nameof(ChannelNotFoundException));
-                    var toDelete = registrations.Single(r => r.ChannelId == (ex as ChannelNotFoundException)?.ChannelId);
-                    _db.DeleteGuildChannelRegistration(toDelete.GuildId, toDelete.ChannelId);
-                    return true;
+                    if (resourceNotFoundException.ResourceType == typeof(IChannel))
+                    {
+                        _logger.LogWarning("Deleting {Channel} due to {Exception}", resourceNotFoundException.ResourceId, nameof(ResourceNotFoundException));
+                        var toDelete = registrations.Single(r => r.ChannelId == resourceNotFoundException.ResourceId);
+                        _db.DeleteGuildChannelRegistration(toDelete.GuildId, toDelete.ChannelId);
+                        return true;
+                    }
                 }
 
                 return false;

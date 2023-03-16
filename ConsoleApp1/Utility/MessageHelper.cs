@@ -1,22 +1,31 @@
-﻿using System.Text;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 namespace DiscordChatGPT.Utility;
 
 public static class MessageHelper
 {
-    private const string MasterEmoteGuildId = "1084611475282333696";
+    private const string _masterEmoteGuildId = "1084611475282333696";
+
+    private static readonly string[] _recognizedEmotes = new[]
+    {
+        "alienpls",
+        "kekw",
+        "aware"
+    };
     
     public static string TransformForDiscord(this string input)
     {
         if (string.IsNullOrWhiteSpace(input)) return input;
         
-        foreach (Match match in Regex.Matches(input, @"(?<!<a):([a-zA-Z0-9]+?):(?!\d+?>)"))
+        foreach (Match match in Regex.Matches(input, @$"(?<!<a):({string.Join("|", _recognizedEmotes)}):(?!\d+?>)"))
         {
-            input = input.Replace(match.Value, $"<a:{match.Groups[1].Value}:{MasterEmoteGuildId}>");
+            input = input.Replace(match.Value, $"<a:{match.Groups[1].Value}:{_masterEmoteGuildId}>");
         }
 
-        input = input.Trim('"');
+        if (input.StartsWith('"') && input.EndsWith('"'))
+        {
+            input = input.Trim('"');
+        }
 
         return input;
     }

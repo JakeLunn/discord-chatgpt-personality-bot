@@ -30,7 +30,7 @@ public class OpenAiService
     /// </summary>
     /// <param name="message"></param>
     /// <returns>Boolean indicating whether the request was successful</returns>
-    internal static async Task<(bool success, ChatGPTMessage responseMessage)> ChatGpt(List<ChatGPTMessage> messages)
+    internal static async Task<(bool success, ChatGPTMessage responseMessage)> ChatGpt(IList<ChatGPTMessage> messages)
     {
         // Create a new RestClient instance
         var client = new RestClient(ChatGptApiUrl);
