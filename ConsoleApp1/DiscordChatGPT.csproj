@@ -8,6 +8,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="local.settings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="local.settings.json" Condition="$(ConfigurationName) != 'Release'">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Discord.Net" Version="3.9.0" />
     <PackageReference Include="LiteDB" Version="5.0.16" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="7.0.0" />
