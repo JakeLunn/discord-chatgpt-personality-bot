@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using System.Reflection;
 
 const string _discordToken = "MTA4MzU3MTA1NDQ1MjE2Njc3MA.GxVCYb.tmXAIOaBy9l0C68ifLaSCVMaMnVs05o5FWkcKo";
@@ -19,7 +20,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
     {
         config
             .AddJsonFile("local.settings.json", true)
-            .AddEnvironmentVariables();
+            .AddEnvironmentVariables(nameof(DiscordChatGPT));
     })
     .ConfigureServices((host, services) =>
     {
@@ -36,6 +37,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
             .AddSingleton<DiscordRestClient>()
             .AddSingleton<DataService>()
             .AddSingleton<BotOrchestrator>()
+            .AddSingleton<EmoteOrchestrator>()
             .AddHostedService<TimedHostedService>()
             .Configure<DataServiceOptions>(host.Configuration.GetSection(nameof(DataServiceOptions)))
             .Configure<TimedHostOptions>(host.Configuration.GetSection(nameof(TimedHostOptions)))
@@ -45,7 +47,9 @@ using IHost host = Host.CreateDefaultBuilder(args)
         {
             builder.AddSimpleConsole(options =>
             {
+                options.IncludeScopes = true;
                 options.SingleLine = true;
+                options.TimestampFormat = "MM/dd hh:mm:ss tt ";
             });
 
             builder.AddFile("DiscordChatGPT{Date}");
@@ -114,6 +118,9 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
         .CheckConnection();
 
     logger.LogInformation("DB Connection Check successful");
+
+    var config = serviceProvider.GetRequiredService<IConfiguration>();
+    logger.LogInformation("Initial Configuration Values Loaded:\n{Configuration}", string.Join("\n", config.AsEnumerable().OrderBy(a => a.Key)));
 
     await socketClient.StartAsync();
 }

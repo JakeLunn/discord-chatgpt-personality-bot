@@ -2,27 +2,16 @@
 using Discord.Interactions;
 using DiscordChatGPT.Models;
 using DiscordChatGPT.Services;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 
 namespace DiscordChatGPT.Modules;
 
 public class SlashCommandsModule : InteractionModuleBase
 {
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<SlashCommandsModule> _logger;
     private readonly DataService _dataService;
-    private readonly BotOrchestrator _botOrchestrator;
 
-    public SlashCommandsModule(IMemoryCache cache, 
-        ILogger<SlashCommandsModule> logger, 
-        DataService dataService,
-        BotOrchestrator botOrchestrator)
+    public SlashCommandsModule(DataService dataService)
     {
-        _cache = cache;
-        _logger = logger;
         _dataService = dataService;
-        _botOrchestrator = botOrchestrator;
     }
 
     [SlashCommand("register", "Register the current channel for the bot to be active in.")]

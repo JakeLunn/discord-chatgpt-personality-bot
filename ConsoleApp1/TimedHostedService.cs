@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Rest;
+using Discord.WebSocket;
 using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Options;
 using DiscordChatGPT.Services;
@@ -57,15 +58,6 @@ public class TimedHostedService : IHostedService, IDisposable
         _logger.LogInformation(
             "{Service} is working. Count: {Count}", nameof(TimedHostedService), executionCount);
 
-        var roll = _random.Next(1, 100);
-        _logger.LogInformation("Rolled {Roll} out of possible 100. The minimum value needed is {MinimumRoll}.", roll, _options.Value.ChanceOutOf100);
-
-        if (roll > _options.Value.ChanceOutOf100 && !Debugger.IsAttached)
-        {
-            _logger.LogInformation("doing nothing due to roll.");
-            return;
-        }
-
         var currentDate = DateTime.Now;
         var sleepTimeStart = new TimeSpan(22, 0, 0);
         var sleepTimeEnd = new TimeSpan(9, 0, 0);
@@ -76,15 +68,26 @@ public class TimedHostedService : IHostedService, IDisposable
         }
 
         var registrations = _db.GetGuildChannelRegistrations();
+        _logger.LogInformation("Retrieved {Count} Guild Registrations", registrations.Count);
 
         try
         {
             var exceptions = new List<Exception>();
             foreach (var reg in registrations)
             {
+                var roll = _random.Next(1, 100);
+                _logger.LogInformation("Rolled {Roll} out of possible 100. Target roll is <= {Target}.", roll, _options.Value.ChanceOutOf100);
+
+                // Given %N Chance, then roll needs to be <= N to succeed.
+                if (roll <= _options.Value.ChanceOutOf100 && !Debugger.IsAttached)
+                {
+                    _logger.LogInformation("doing nothing due to roll.");
+                    continue;
+                }
+
                 try
                 {
-                    await _botOrchestrator.RespondToChannelAsync(reg.GuildId, reg.ChannelId);
+                    await _botOrchestrator.RespondToGuildTextChannelAsync(reg.GuildId, reg.ChannelId);
                 }
                 catch (Exception e)
                 {
@@ -103,7 +106,7 @@ public class TimedHostedService : IHostedService, IDisposable
             {
                 if (ex is ResourceNotFoundException resourceNotFoundException)
                 {
-                    if (resourceNotFoundException.ResourceType == typeof(IChannel))
+                    if (typeof(RestChannel).IsAssignableFrom(resourceNotFoundException.ResourceType))
                     {
                         _logger.LogWarning("Deleting {Channel} due to {Exception}", resourceNotFoundException.ResourceId, nameof(ResourceNotFoundException));
                         var toDelete = registrations.Single(r => r.ChannelId == resourceNotFoundException.ResourceId);

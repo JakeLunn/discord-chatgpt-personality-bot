@@ -12,6 +12,8 @@ public class ChatGPTMessagesFactory
 
     private ChatGPTMessage? _startPrompt = null;
     private ChatGPTMessage? _tailPrompt = null;
+    private ChatGPTMessage? _messageToReplyTo = null;
+
     private List<ChatGPTMessage> _messages;
 
     public ChatGPTMessagesFactory(DiscordRestClient restClient)
@@ -40,6 +42,13 @@ public class ChatGPTMessagesFactory
         }
 
         _tailPrompt = new ChatGPTMessage(ChatGPTRole.system, prompt);
+
+        return this;
+    }
+
+    public ChatGPTMessagesFactory InReplyTo(IMessage message)
+    {
+        _messageToReplyTo = new ChatGPTMessage(ChatGPTRole.user, message.CleanContent, message.Timestamp);
 
         return this;
     }
@@ -76,14 +85,13 @@ public class ChatGPTMessagesFactory
         foreach (var message in channelMessages)
         {
             _messages.Add(new ChatGPTMessage(
-                    message.Author.Id == _restClient.CurrentUser.Id ? ChatGPTRole.assistant : ChatGPTRole.user,
-                    message.CleanContent));
+                    ChatGPTRole.user,
+                    message.CleanContent,
+                    message.Timestamp));
         }
 
         return this;
     }
-
-    
 
     public IList<ChatGPTMessage> Build()
     {
@@ -97,6 +105,11 @@ public class ChatGPTMessagesFactory
         if (_messages.Any())
         {
             result.AddRange(_messages.OrderBy(m => m.Timestamp));
+        }
+
+        if (_messageToReplyTo != null && !_messages.Contains(_messageToReplyTo))
+        {
+            result.Add(_messageToReplyTo);
         }
 
         if (_tailPrompt != null)
