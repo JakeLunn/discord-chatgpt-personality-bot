@@ -4,7 +4,6 @@ using Discord.WebSocket;
 using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Factories;
 using DiscordChatGPT.Models;
-using DiscordChatGPT.Utility;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 

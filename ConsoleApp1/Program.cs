@@ -98,7 +98,7 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
             var orc = serviceProvider.GetRequiredService<BotOrchestrator>();
             await orc.RespondToMentionAsync(message);
         }
-        
+
         await Task.CompletedTask;
     };
 
@@ -106,12 +106,12 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
     {
         await interactionService.RegisterCommandsGloballyAsync(true);
     };
-    
+
     await restClient.LoginAsync(Discord.TokenType.Bot, _discordToken);
     await socketClient.LoginAsync(Discord.TokenType.Bot, _discordToken);
 
     logger.LogInformation("Doing DB Connection Check");
-    
+
     serviceProvider
         .GetRequiredService<DataService>()
         .CheckConnection();

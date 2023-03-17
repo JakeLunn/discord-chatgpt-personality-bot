@@ -1,6 +1,4 @@
-﻿using LiteDB;
-
-namespace DiscordChatGPT.Models;
+﻿namespace DiscordChatGPT.Models;
 
 public class GuildChannelRegistration
 {

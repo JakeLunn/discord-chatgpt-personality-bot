@@ -1,6 +1,4 @@
-﻿using Discord;
-using Discord.Rest;
-using Discord.WebSocket;
+﻿using Discord.Rest;
 using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Options;
 using DiscordChatGPT.Services;
@@ -8,7 +6,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Diagnostics;
 
 namespace DiscordChatGPT;
 
@@ -121,7 +118,7 @@ public class TimedHostedService : IHostedService, IDisposable
             });
         }
     }
-    
+
     public Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("{Service} is stopping.", nameof(TimedHostedService));

@@ -1,8 +1,7 @@
-﻿using System.Net;
-using DiscordChatGPT.Models;
-using Microsoft.Extensions.Caching.Memory;
+﻿using DiscordChatGPT.Models;
 using Newtonsoft.Json;
 using RestSharp;
+using System.Net;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace DiscordChatGPT.Services;
@@ -23,7 +22,7 @@ public class OpenAiService
     ///     Url to the Dall-E Api
     /// </summary>
     private const string DalleApiUrl = "https://api.openai.com/v1/images/generations";
-    
+
     /// <summary>
     ///     The method uses the RestClient class to send a request to the ChatGPT API, passing the user's message as the
     ///     prompt and sends the response into the Chat
@@ -85,7 +84,7 @@ public class OpenAiService
             Timestamp = DateTime.UtcNow
         };
 
-        return new (success, returnMessage);
+        return new(success, returnMessage);
     }
 
     /// <summary>

@@ -10,7 +10,7 @@ public class ChatGPTMessage : IEquatable<ChatGPTMessage?>
     public string Content { get; set; } = string.Empty;
     [JsonIgnore]
     public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.Now;
-    
+
     public ChatGPTMessage(ChatGPTRole role, string content)
     {
         Role = Enum.GetName(role)!;
