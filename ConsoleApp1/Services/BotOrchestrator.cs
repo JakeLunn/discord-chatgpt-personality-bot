@@ -13,16 +13,19 @@ public class BotOrchestrator
 {
     private readonly DiscordRestClient _client;
     private readonly EmoteOrchestrator _emoteOrchestrator;
+    private readonly DataService _dataService;
     private readonly ILogger<BotOrchestrator> _logger;
     private readonly IMemoryCache _cache;
 
     public BotOrchestrator(DiscordRestClient client,
         EmoteOrchestrator emoteOrchestrator,
+        DataService dataService,
         ILogger<BotOrchestrator> logger,
         IMemoryCache cache)
     {
         _client = client;
         _emoteOrchestrator = emoteOrchestrator;
+        _dataService = dataService;
         _logger = logger;
         _cache = cache;
     }
@@ -63,16 +66,31 @@ public class BotOrchestrator
     {
         using var _ = _logger.BeginScope("Respond to {User}", message.Author.Username);
 
-        var messages = new ChatGPTMessagesFactory(_client)
-            .InReplyTo(message)
-            .WithPrompt(Constants.StartingPromptText)
-            .FromChannel(message.Channel, 20)
-            .WithTailPrompt($"The previous messages were from users on the Discord server. " +
-                $"Write a reply to the most recent message as Alex that fits within the context of the whole conversation. " +
-                $"Strictly follow the rules previously laid out.")
-            .Build();
+        if (message.Channel is SocketGuildChannel guildChannel)
+        {
+            if (!_dataService.IsChannelRegistered(guildChannel.Guild.Id, guildChannel.Id))
+            {
+                _logger.LogWarning("Guild({Guild} => Channel(#{Channel}) is not registered. Will not respond to unregistered guild channels.",
+                    guildChannel.Guild.Name, guildChannel.Name);
 
-        return await SendToChannelAsync(message.Channel, messages);
+                return null;
+            }
+
+            var messages = new ChatGPTMessagesFactory(_client)
+                .InReplyTo(message)
+                .WithPrompt(Constants.StartingPromptText)
+                .FromChannel(guildChannel.Guild.Id, guildChannel.Id, 20)
+                .WithTailPrompt($"The previous messages were from users on the Discord server. " +
+                    $"Write a reply to the most recent message as Alex that fits within the context of the whole conversation. " +
+                    $"Strictly follow the rules previously laid out.")
+                .Build();
+
+            return await SendToChannelAsync(message.Channel, messages);
+        }
+        else
+        {
+            throw new ArgumentOutOfRangeException(nameof(SocketMessage), $"Message Channel was not castable to {nameof(SocketGuildChannel)} type");
+        }
     }
 
     private async Task<IUserMessage?> SendToChannelAsync(IMessageChannel channel, IList<ChatGPTMessage> messages)

@@ -14,10 +14,10 @@ public class SlashCommandsModule : InteractionModuleBase
         _dataService = dataService;
     }
 
-    [SlashCommand("register", "Register the current channel for the bot to be active in.")]
+    [SlashCommand("register", "Register the current channel for the bot to be active in. Bot will only work in registered channels.")]
     public async Task RegisterChannel()
     {
-        await DeferAsync(true);
+        await DeferAsync();
 
         _dataService.AddGuildChannelRegistration(new GuildChannelRegistration(Context.Guild.Id, Context.Channel.Id));
 
@@ -31,7 +31,7 @@ public class SlashCommandsModule : InteractionModuleBase
     [SlashCommand("unregister", "Unregister the current channel for the bot.")]
     public async Task UnregisterChannel()
     {
-        await DeferAsync(true);
+        await DeferAsync();
 
         _dataService.DeleteGuildChannelRegistration(Context.Guild.Id, Context.Channel.Id);
 

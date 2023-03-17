@@ -58,6 +58,22 @@ public class DataService
         return collection.Delete($"{guildId}{channelId}");
     }
 
+    public bool IsChannelRegistered(ulong guildId, ulong channelId)
+        => GetRegistration(guildId, channelId) != null;
+
+    public GuildChannelRegistration? GetRegistration(ulong guildId, ulong channelId)
+    {
+        using var db = new LiteDatabase(_options.Value.DatabasePath);
+
+        var collection = db.GetCollection<GuildChannelRegistration>();
+
+        collection.EnsureIndex(x => x.GuildId);
+
+        var registration = collection.FindOne(x => x.GuildId == guildId && x.ChannelId == channelId);
+
+        return registration;
+    }
+
     public IList<GuildChannelRegistration> GetGuildChannelRegistrations()
     {
         using var db = new LiteDatabase(_options.Value.DatabasePath);

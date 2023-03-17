@@ -6,7 +6,7 @@ do
     fi
 done
 
-if [ "$RM_FLAG" == "1" ]
+if [ "$RM_FLAG" == 1 ]
 then
     DOCKER_RUN_ARGS="--rm"
 else
