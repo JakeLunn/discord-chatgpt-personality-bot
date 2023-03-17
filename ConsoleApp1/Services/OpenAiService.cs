@@ -44,9 +44,7 @@ public class OpenAiService
         // Create the request data
         var data = new
         {
-            // The prompt with model gpt-3.5-turbo
-            // (the same model used in ChatGPT)
-            model = "gpt-3.5-turbo",
+            model = "gpt-4",
             messages
         };
 
