@@ -1,10 +1,22 @@
-if [ -z "$1" ]; then
-    echo "Usage: $0 [version]"
-    exit 1
+for arg in "$@"
+do
+    if [ "$arg" == "--rm" ]
+    then
+        RM_FLAG=1
+    fi
+done
+
+if [ "$RM_FLAG" == "1" ]
+then
+    DOCKER_RUN_ARGS="--rm"
+else
+    DOCKER_RUN_ARGS=""
 fi
 
+VERSION=$(cat ./version)
+
 docker run \
---rm \
+$DOCKER_RM_ARG \
 --detach \
 --volume alexgpt:/usr/share/LiteDB \
 -e TimedHostOptions__TimedHostTimeSpan="00:30:00" \
@@ -12,4 +24,4 @@ docker run \
 -e TimedHostOptions__SleepStartTimeSpan="21:00:00" \
 -e TimedHostOptions__SleepEndTimeSpan="09:00:00" \
 --name alexgpt \
-jakelunn/alexgpt:$1
+jakelunn/alexgpt:$VERSION
