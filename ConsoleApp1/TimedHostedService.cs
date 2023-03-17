@@ -43,7 +43,7 @@ public class TimedHostedService : IHostedService, IDisposable
     {
         _logger.LogInformation("{Service} has started", nameof(TimedHostedService));
 
-        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.Parse(_options.Value.TimedHostTimeSpan));
+        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.Parse(_options.Value.TimerTimeSpan));
 
         return Task.CompletedTask;
     }
@@ -59,8 +59,9 @@ public class TimedHostedService : IHostedService, IDisposable
             "{Service} is working. Count: {Count}", nameof(TimedHostedService), executionCount);
 
         var currentDate = DateTime.Now;
-        var sleepTimeStart = new TimeSpan(22, 0, 0);
-        var sleepTimeEnd = new TimeSpan(9, 0, 0);
+        var sleepTimeStart = TimeSpan.Parse(_options.Value.SleepStartTimeSpan);
+        var sleepTimeEnd = TimeSpan.Parse(_options.Value.SleepEndTimeSpan);
+
         if (currentDate.TimeOfDay > sleepTimeStart || currentDate.TimeOfDay < sleepTimeEnd)
         {
             _logger.LogInformation("Bot is between sleep hours of {StartTime:c} and {EndTime:c} and will not send messages.", sleepTimeStart, sleepTimeEnd);
@@ -75,11 +76,12 @@ public class TimedHostedService : IHostedService, IDisposable
             var exceptions = new List<Exception>();
             foreach (var reg in registrations)
             {
+                var chance = _options.Value.ChanceOutOf100;
                 var roll = _random.Next(1, 100);
-                _logger.LogInformation("Rolled {Roll} out of possible 100. Target roll is <= {Target}.", roll, _options.Value.ChanceOutOf100);
+                _logger.LogInformation("Rolled {Roll} out of possible 100. Target roll is <= {Target}.", roll, chance);
 
-                // Given %N Chance, then roll needs to be <= N to succeed.
-                if (roll <= _options.Value.ChanceOutOf100 && !Debugger.IsAttached)
+                // Given %N Chance, then a roll > N would fail and continue the loop.
+                if (roll > chance)
                 {
                     _logger.LogInformation("doing nothing due to roll.");
                     continue;

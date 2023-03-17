@@ -10,7 +10,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 using System.Reflection;
 
 const string _discordToken = "MTA4MzU3MTA1NDQ1MjE2Njc3MA.GxVCYb.tmXAIOaBy9l0C68ifLaSCVMaMnVs05o5FWkcKo";
@@ -20,7 +19,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
     {
         config
             .AddJsonFile("local.settings.json", true)
-            .AddEnvironmentVariables(nameof(DiscordChatGPT));
+            .AddEnvironmentVariables();
     })
     .ConfigureServices((host, services) =>
     {
