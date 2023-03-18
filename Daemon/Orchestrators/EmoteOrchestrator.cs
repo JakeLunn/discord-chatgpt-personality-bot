@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text.RegularExpressions;
 
-namespace DiscordChatGPT.Services;
+namespace DiscordChatGPT.Daemon.Orchestrators;
 
 public class EmoteOrchestrator
 {

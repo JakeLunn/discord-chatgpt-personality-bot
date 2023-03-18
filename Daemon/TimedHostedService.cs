@@ -1,4 +1,5 @@
 ﻿using Discord.Rest;
+using DiscordChatGPT.Daemon.Orchestrators;
 using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Options;
 using DiscordChatGPT.Services;
@@ -15,7 +16,7 @@ public class TimedHostedService : IHostedService, IDisposable
     private readonly ILogger<TimedHostedService> _logger;
     private readonly DiscordRestClient _client;
     private readonly IMemoryCache _cache;
-    private readonly DataService _db;
+    private readonly DataAccessor _db;
     private readonly BotOrchestrator _botOrchestrator;
     private TimedHostOptions _options;
     private readonly static Random _random = new();
@@ -26,7 +27,7 @@ public class TimedHostedService : IHostedService, IDisposable
     public TimedHostedService(ILogger<TimedHostedService> logger,
         DiscordRestClient client,
         IMemoryCache cache,
-        DataService db,
+        DataAccessor db,
         BotOrchestrator botOrchestrator,
         IOptionsMonitor<TimedHostOptions> options)
     {

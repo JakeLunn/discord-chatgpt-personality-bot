@@ -7,9 +7,9 @@ namespace DiscordChatGPT.Modules;
 
 public class SlashCommandsModule : InteractionModuleBase
 {
-    private readonly DataService _dataService;
+    private readonly DataAccessor _dataService;
 
-    public SlashCommandsModule(DataService dataService)
+    public SlashCommandsModule(DataAccessor dataService)
     {
         _dataService = dataService;
     }

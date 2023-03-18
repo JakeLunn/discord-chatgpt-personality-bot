@@ -6,13 +6,13 @@ using Microsoft.Extensions.Options;
 
 namespace DiscordChatGPT.Services;
 
-public class DataService
+public class DataAccessor
 {
     private readonly IOptions<DataServiceOptions> _options;
-    private readonly ILogger<DataService> _logger;
+    private readonly ILogger<DataAccessor> _logger;
 
-    public DataService(IOptions<DataServiceOptions> options,
-        ILogger<DataService> logger)
+    public DataAccessor(IOptions<DataServiceOptions> options,
+        ILogger<DataAccessor> logger)
     {
         _options = options;
         _logger = logger;

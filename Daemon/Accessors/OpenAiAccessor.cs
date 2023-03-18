@@ -1,4 +1,6 @@
-﻿using DiscordChatGPT.Models;
+﻿using DiscordChatGPT.Daemon.Options;
+using DiscordChatGPT.Models;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using RestSharp;
 using System.Net;
@@ -6,22 +8,20 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace DiscordChatGPT.Services;
 
-public class OpenAiService
+public class OpenAiAccessor
 {
-    /// <summary>
-    ///     Api Key to access OpenAi Apis like ChatGPT - (REPLACE THIS WITH YOUR OPENAI API KEY)
-    /// </summary>
-    private const string OpenAiApiKey = "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";
+    private OpenAiOptions _options;
 
-    /// <summary>
-    ///     Url to the ChatGPT Api (currently not excatly the ChatGPT API only the availble GPT-3 completion Api)
-    /// </summary>
-    private const string ChatGptApiUrl = "https://api.openai.com/v1/chat/completions";
+    public OpenAiAccessor(IOptionsMonitor<OpenAiOptions> options)
+    {
+        _options = options.CurrentValue;
+        options.OnChange(OnOptionsChange);
+    }
 
-    /// <summary>
-    ///     Url to the Dall-E Api
-    /// </summary>
-    private const string DalleApiUrl = "https://api.openai.com/v1/images/generations";
+    private void OnOptionsChange(OpenAiOptions newOptions)
+    {
+        _options = newOptions;
+    }
 
     /// <summary>
     ///     The method uses the RestClient class to send a request to the ChatGPT API, passing the user's message as the
@@ -29,17 +29,17 @@ public class OpenAiService
     /// </summary>
     /// <param name="message"></param>
     /// <returns>Boolean indicating whether the request was successful</returns>
-    internal static async Task<(bool success, ChatGPTMessage responseMessage)> ChatGpt(IList<ChatGPTMessage> messages)
+    public async Task<(bool success, ChatGPTMessage responseMessage)> ChatGpt(IList<ChatGPTMessage> messages)
     {
         // Create a new RestClient instance
-        var client = new RestClient(ChatGptApiUrl);
+        var client = new RestClient(_options.ChatGptApiUrl);
 
         // Create a new RestRequest instance
         var request = new RestRequest("", Method.Post);
 
         // Set the request headers
         request.AddHeader("Content-Type", "application/json");
-        request.AddHeader("Authorization", $"Bearer {OpenAiApiKey}");
+        request.AddHeader("Authorization", $"Bearer {_options.ApiKey}");
 
         // Create the request data
         var data = new
@@ -91,17 +91,17 @@ public class OpenAiService
     /// </summary>
     /// <param name="message"></param>
     /// <returns>Boolean indicating whether the request was successful</returns>
-    internal static async Task<Tuple<bool, string>> DallE(string message)
+    public async Task<Tuple<bool, string>> DallE(string message)
     {
         // Create a new RestClient instance
-        var client = new RestClient(DalleApiUrl);
+        var client = new RestClient(_options.DalleApiUrl);
 
         // Create a new RestRequest instance
         var request = new RestRequest("", Method.Post);
 
         // Set the request headers
         request.AddHeader("Content-Type", "application/json");
-        request.AddHeader("Authorization", $"Bearer {OpenAiApiKey}");
+        request.AddHeader("Authorization", $"Bearer {_options.ApiKey}");
 
         // Create the request data
         var data = new

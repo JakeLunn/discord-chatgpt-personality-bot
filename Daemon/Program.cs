@@ -3,6 +3,8 @@ using Discord.Interactions;
 using Discord.Rest;
 using Discord.WebSocket;
 using DiscordChatGPT;
+using DiscordChatGPT.Daemon.Options;
+using DiscordChatGPT.Daemon.Orchestrators;
 using DiscordChatGPT.Modules;
 using DiscordChatGPT.Options;
 using DiscordChatGPT.Services;
@@ -11,8 +13,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
-
-const string _discordToken = "MTA4MzU3MTA1NDQ1MjE2Njc3MA.GxVCYb.tmXAIOaBy9l0C68ifLaSCVMaMnVs05o5FWkcKo";
 
 using IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration(config =>
@@ -34,13 +34,15 @@ using IHost host = Host.CreateDefaultBuilder(args)
             .AddSingleton<SlashCommandsModule>()
             .AddSingleton(new DiscordSocketClient(socketConfig))
             .AddSingleton<DiscordRestClient>()
-            .AddSingleton<DataService>()
+            .AddSingleton<DataAccessor>()
+            .AddSingleton<OpenAiAccessor>()
             .AddSingleton<BotOrchestrator>()
             .AddSingleton<EmoteOrchestrator>()
             .AddHostedService<TimedHostedService>()
             .Configure<DataServiceOptions>(host.Configuration.GetSection(nameof(DataServiceOptions)))
             .Configure<TimedHostOptions>(host.Configuration.GetSection(nameof(TimedHostOptions)))
-            .Configure<GlobalDiscordOptions>(host.Configuration.GetSection(nameof(GlobalDiscordOptions)));
+            .Configure<GlobalDiscordOptions>(host.Configuration.GetSection(nameof(GlobalDiscordOptions)))
+            .Configure<OpenAiOptions>(host.Configuration.GetSection(nameof(OpenAiOptions)));
 
         services.AddLogging(builder =>
         {
@@ -107,18 +109,26 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
         await interactionService.RegisterCommandsGloballyAsync(true);
     };
 
-    await restClient.LoginAsync(Discord.TokenType.Bot, _discordToken);
-    await socketClient.LoginAsync(Discord.TokenType.Bot, _discordToken);
+    var config = serviceProvider.GetRequiredService<IConfiguration>();
+
+    var token = config["GlobalDiscordOptions:Token"];
+    if (token == null)
+    {
+        throw new InvalidOperationException("Discord Token was not found");
+    }
+
+    await restClient.LoginAsync(Discord.TokenType.Bot, token);
+    await socketClient.LoginAsync(Discord.TokenType.Bot, token);
 
     logger.LogInformation("Doing DB Connection Check");
 
     serviceProvider
-        .GetRequiredService<DataService>()
+        .GetRequiredService<DataAccessor>()
         .CheckConnection();
 
     logger.LogInformation("DB Connection Check successful");
 
-    var config = serviceProvider.GetRequiredService<IConfiguration>();
+    
     logger.LogInformation("Initial Configuration Values Loaded:\n{Configuration}", string.Join("\n", config.AsEnumerable().OrderBy(a => a.Key)));
 
     await socketClient.StartAsync();

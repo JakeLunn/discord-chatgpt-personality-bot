@@ -4,28 +4,32 @@ using Discord.WebSocket;
 using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Factories;
 using DiscordChatGPT.Models;
+using DiscordChatGPT.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
-namespace DiscordChatGPT.Services;
+namespace DiscordChatGPT.Daemon.Orchestrators;
 
 public class BotOrchestrator
 {
     private readonly DiscordRestClient _client;
     private readonly EmoteOrchestrator _emoteOrchestrator;
-    private readonly DataService _dataService;
+    private readonly DataAccessor _dataService;
+    private readonly OpenAiAccessor _openAiAccessor;
     private readonly ILogger<BotOrchestrator> _logger;
     private readonly IMemoryCache _cache;
 
     public BotOrchestrator(DiscordRestClient client,
         EmoteOrchestrator emoteOrchestrator,
-        DataService dataService,
+        DataAccessor dataService,
+        OpenAiAccessor openAiAccessor,
         ILogger<BotOrchestrator> logger,
         IMemoryCache cache)
     {
         _client = client;
         _emoteOrchestrator = emoteOrchestrator;
         _dataService = dataService;
+        _openAiAccessor = openAiAccessor;
         _logger = logger;
         _cache = cache;
     }
@@ -95,7 +99,7 @@ public class BotOrchestrator
 
     private async Task<IUserMessage?> SendToChannelAsync(IMessageChannel channel, IList<ChatGPTMessage> messages)
     {
-        var (success, responseMessage) = await OpenAiService.ChatGpt(messages);
+        var (success, responseMessage) = await _openAiAccessor.ChatGpt(messages);
 
         if (!success)
         {
