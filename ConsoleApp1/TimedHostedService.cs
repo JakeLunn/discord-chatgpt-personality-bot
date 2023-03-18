@@ -17,30 +17,56 @@ public class TimedHostedService : IHostedService, IDisposable
     private readonly IMemoryCache _cache;
     private readonly DataService _db;
     private readonly BotOrchestrator _botOrchestrator;
-    private readonly IOptions<TimedHostOptions> _options;
+    private TimedHostOptions _options;
     private readonly static Random _random = new();
+
     private Timer? _timer = null;
+    private IDisposable? _changeMonitor = null;
 
     public TimedHostedService(ILogger<TimedHostedService> logger,
         DiscordRestClient client,
         IMemoryCache cache,
         DataService db,
         BotOrchestrator botOrchestrator,
-        IOptions<TimedHostOptions> options)
+        IOptionsMonitor<TimedHostOptions> options)
     {
         _logger = logger;
         _client = client;
         _cache = cache;
         _db = db;
         _botOrchestrator = botOrchestrator;
-        _options = options;
+        _options = options.CurrentValue;
+
+        _changeMonitor = options.OnChange(OnOptionsChange);
+    }
+
+    private void OnOptionsChange(TimedHostOptions newOptions)
+    {
+        using var _ = _logger.BeginScope("Options Monitor Change");
+
+        _logger.LogInformation("Updating options.");
+
+        if (newOptions.TimerTimeSpan != _options.TimerTimeSpan)
+        {
+            if (TimeSpan.TryParse(newOptions.TimerTimeSpan, out var newTimeSpan))
+            {
+                _logger.LogInformation("Updating timer to {TimeSpan}", newOptions.TimerTimeSpan);
+                _timer?.Change(TimeSpan.Zero, newTimeSpan);
+            }
+            else
+            {
+                _logger.LogWarning("New timer value {TimeSpan} was unable to be parsed and will not be applied.", newOptions.TimerTimeSpan);
+            }
+        }
+
+        _options = newOptions;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("{Service} has started", nameof(TimedHostedService));
 
-        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.Parse(_options.Value.TimerTimeSpan));
+        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.Parse(_options.TimerTimeSpan));
 
         return Task.CompletedTask;
     }
@@ -56,8 +82,8 @@ public class TimedHostedService : IHostedService, IDisposable
             "{Service} is working. Count: {Count}", nameof(TimedHostedService), executionCount);
 
         var currentDate = DateTime.Now;
-        var sleepTimeStart = TimeSpan.Parse(_options.Value.SleepStartTimeSpan);
-        var sleepTimeEnd = TimeSpan.Parse(_options.Value.SleepEndTimeSpan);
+        var sleepTimeStart = TimeSpan.Parse(_options.SleepStartTimeSpan);
+        var sleepTimeEnd = TimeSpan.Parse(_options.SleepEndTimeSpan);
 
         if (currentDate.TimeOfDay > sleepTimeStart || currentDate.TimeOfDay < sleepTimeEnd)
         {
@@ -73,7 +99,7 @@ public class TimedHostedService : IHostedService, IDisposable
             var exceptions = new List<Exception>();
             foreach (var reg in registrations)
             {
-                var chance = _options.Value.ChanceOutOf100;
+                var chance = _options.ChanceOutOf100;
                 var roll = _random.Next(1, 100);
                 _logger.LogInformation("Rolled {Roll} out of possible 100. Target roll is <= {Target}.", roll, chance);
 
@@ -131,5 +157,6 @@ public class TimedHostedService : IHostedService, IDisposable
     public void Dispose()
     {
         _timer?.Dispose();
+        _changeMonitor?.Dispose();
     }
 }
