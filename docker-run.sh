@@ -12,12 +12,15 @@ if [ -z "$DISCORD_TOKEN" ] || [ -z "$OPENAI_KEY" ] || [ -z "$SALT" ]; then
     exit 1
 fi
 
+docker stop alexgpt || true
+docker rm alexgpt || true
+
 docker run \
 --rm \
 --detach \
 --volume alexgpt:/usr/share/LiteDB \
 -e TimedHostOptions__TimedHostTimeSpan="00:30:00" \
--e TimedHostOptions__ChanceOutOf100=30 \
+-e TimedHostOptions__ChanceOutOf100=10 \
 -e TimedHostOptions__SleepStartTimeSpan="21:00:00" \
 -e TimedHostOptions__SleepEndTimeSpan="09:00:00" \
 -e GlobalDiscordOptions__Token=$DISCORD_TOKEN \
