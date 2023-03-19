@@ -24,23 +24,27 @@ public class EmoteOrchestrator
     }
 
     public string FormatDiscordMessage(string input)
-        => FormatDiscordMessageAsync(input).GetAwaiter().GetResult();
+        => FormatDiscordMessageAsync(_options.Value.MasterGuildId, input).GetAwaiter().GetResult();
+
+    public string FormatDiscordMessage(ulong guildId, string input)
+        => FormatDiscordMessageAsync(guildId, input).GetAwaiter().GetResult();
 
     public string ReplaceEmotes(string input)
-        => ReplaceEmotesAsync(input).GetAwaiter().GetResult();
+        => ReplaceEmotesAsync(_options.Value.MasterGuildId, input).GetAwaiter().GetResult();
 
-    public async Task<string> FormatDiscordMessageAsync(string input)
+    public string ReplaceEmotes(ulong guildId, string input)
+        => ReplaceEmotesAsync(guildId, input).GetAwaiter().GetResult();
+
+    public async Task<string> FormatDiscordMessageAsync(ulong guildId, string input)
     {
-        input = await ReplaceEmotesAsync(input);
+        input = await ReplaceEmotesAsync(guildId, input);
         input = input.TrimQuotations();
 
         return input;
     }
 
-    public async Task<string> ReplaceEmotesAsync(string input)
+    public async Task<string> ReplaceEmotesAsync(ulong guildId, string input)
     {
-        var guildId = _options.Value.MasterGuildId;
-
         if (string.IsNullOrWhiteSpace(input))
         {
             throw new ArgumentNullException(nameof(input));
@@ -55,7 +59,7 @@ public class EmoteOrchestrator
         var emotes = await guild.GetEmotesAsync();
         if (emotes == null)
         {
-            _logger.LogWarning("No emotes found");
+            _logger.LogWarning("No emotes found for Guild {GuildId}", guildId);
             return input;
         }
 

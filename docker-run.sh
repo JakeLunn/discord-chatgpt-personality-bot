@@ -13,6 +13,7 @@ if [ -z "$DISCORD_TOKEN" ] || [ -z "$OPENAI_KEY" ] || [ -z "$SALT" ]; then
 fi
 
 docker run \
+--rm \
 --detach \
 --volume alexgpt:/usr/share/LiteDB \
 -e TimedHostOptions__TimedHostTimeSpan="00:30:00" \

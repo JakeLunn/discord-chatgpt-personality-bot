@@ -69,7 +69,7 @@ public class BotOrchestrator
                 $"Strictly follow the rules previously laid out.")
             .Build();
 
-        return await SendToChannelAsync(channel, messages);
+        return await SendToChannelAsync(guildId, channel, messages);
     }
 
     public async Task<IUserMessage?> RespondToMentionAsync(SocketMessage message)
@@ -97,7 +97,7 @@ public class BotOrchestrator
                     $"Strictly follow the rules previously laid out.")
                 .Build();
 
-            return await SendToChannelAsync(message.Channel, messages);
+            return await SendToChannelAsync(guildChannel.Guild.Id, message.Channel, messages);
         }
         else
         {
@@ -132,13 +132,13 @@ public class BotOrchestrator
         return prompt;
     }
 
-    private async Task<IUserMessage?> SendToChannelAsync(IMessageChannel channel, IList<ChatGPTMessage> messages)
+    private async Task<IUserMessage?> SendToChannelAsync(ulong guildId, IMessageChannel channel, IList<ChatGPTMessage> messages)
     {
         try
         {
             var result = await _openAiAccessor.PostChatGPT(messages);
 
-            var content = await _emoteOrchestrator.FormatDiscordMessageAsync(result.Content);
+            var content = await _emoteOrchestrator.FormatDiscordMessageAsync(guildId, result.Content);
 
             _logger.LogInformation("Sending: {Message}", content);
             return await channel.SendMessageAsync(content);
