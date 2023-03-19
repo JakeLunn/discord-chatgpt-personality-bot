@@ -1,8 +1,10 @@
-﻿using DiscordChatGPT.Models;
+﻿using DiscordChatGPT.Daemon.Models;
+using DiscordChatGPT.Models;
 using DiscordChatGPT.Options;
 using LiteDB;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Linq.Expressions;
 
 namespace DiscordChatGPT.Services;
 
@@ -29,11 +31,9 @@ public class DataAccessor
 
     public GuildChannelRegistration AddGuildChannelRegistration(GuildChannelRegistration reg)
     {
-        using var db = new LiteDatabase(_options.Value.DatabasePath);
-
-        var collection = db.GetCollection<GuildChannelRegistration>();
-
-        collection.EnsureIndex(x => x.GuildId);
+        using var db = OpenCollection<GuildChannelRegistration>(out var collection,
+            x => x.GuildId,
+            x => x.ChannelId);
 
         var existing = collection.FindOne(x => x.GuildId == reg.GuildId && x.ChannelId == reg.ChannelId);
         if (existing != null)
@@ -49,11 +49,9 @@ public class DataAccessor
 
     public bool DeleteGuildChannelRegistration(ulong guildId, ulong channelId)
     {
-        using var db = new LiteDatabase(_options.Value.DatabasePath);
-
-        var collection = db.GetCollection<GuildChannelRegistration>();
-
-        collection.EnsureIndex(x => x.GuildId);
+        using var db = OpenCollection<GuildChannelRegistration>(out var collection, 
+            x => x.GuildId,
+            x => x.ChannelId);
 
         return collection.Delete($"{guildId}{channelId}");
     }
@@ -63,11 +61,7 @@ public class DataAccessor
 
     public GuildChannelRegistration? GetRegistration(ulong guildId, ulong channelId)
     {
-        using var db = new LiteDatabase(_options.Value.DatabasePath);
-
-        var collection = db.GetCollection<GuildChannelRegistration>();
-
-        collection.EnsureIndex(x => x.GuildId);
+        using var db = OpenCollection<GuildChannelRegistration>(out var collection, x => x.GuildId);
 
         var registration = collection.FindOne(x => x.GuildId == guildId && x.ChannelId == channelId);
 
@@ -76,14 +70,73 @@ public class DataAccessor
 
     public IList<GuildChannelRegistration> GetGuildChannelRegistrations()
     {
-        using var db = new LiteDatabase(_options.Value.DatabasePath);
-
-        var collection = db.GetCollection<GuildChannelRegistration>();
-
-        collection.EnsureIndex(x => x.GuildId);
+        using var db = OpenCollection<GuildChannelRegistration>(out var collection, x => x.GuildId);
 
         return collection
             .FindAll()
             .ToList();
+    }
+
+    public GuildPersonaFact? GetPersonaFact(int id)
+    {
+        using var db = OpenCollection<GuildPersonaFact>(out var collection, x => x.GuildId);
+
+        return collection.FindById(id);
+    }
+
+    public IList<GuildPersonaFact> GetPersonaFacts(ulong guildId)
+    {
+        using var db = OpenCollection<GuildPersonaFact>(out var collection, x => x.GuildId);
+
+        return collection
+            .Find(x => x.GuildId == guildId)
+            .ToList();
+    }
+
+    public int InsertPersonaFact(GuildPersonaFact fact)
+    {
+        using var db = OpenCollection<GuildPersonaFact>(out var collection, 
+            x => x.GuildId,
+            x => x.Id);
+
+        return collection.Insert(fact);
+    }
+
+    public int BulkInsertPersonaFacts(IList<GuildPersonaFact> facts)
+    {
+        using var db = OpenCollection<GuildPersonaFact>(out var collection,
+            x => x.GuildId,
+            x => x.Id);
+
+        return collection.InsertBulk(facts);
+    }
+
+    public bool DeletePersonaFact(int factId)
+    {
+        using var db = OpenCollection<GuildPersonaFact>(out var collection, x => x.Id);
+        return collection.Delete(factId);
+    }
+
+    public int DeleteAllPersonaFactsForGuild(ulong guildId)
+    {
+        using var db = OpenCollection<GuildPersonaFact>(out var collection, x => x.GuildId);
+        return collection.DeleteMany(x => x.GuildId == guildId);
+    }
+
+    private LiteDatabase? OpenCollection<T>(out ILiteCollection<T> collection, params Expression<Func<T, object>>[] ensureIndexes)
+    {
+        var db = new LiteDatabase(_options.Value.DatabasePath);
+
+        collection = db.GetCollection<T>();
+
+        if (ensureIndexes.Length > 0)
+        {
+            foreach (var ensureIndex in ensureIndexes)
+            {
+                collection.EnsureIndex(ensureIndex);
+            }
+        }
+
+        return db;
     }
 }

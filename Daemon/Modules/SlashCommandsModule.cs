@@ -7,11 +7,11 @@ namespace DiscordChatGPT.Modules;
 
 public class SlashCommandsModule : InteractionModuleBase
 {
-    private readonly DataAccessor _dataService;
+    private readonly DataAccessor _dataAccessor;
 
-    public SlashCommandsModule(DataAccessor dataService)
+    public SlashCommandsModule(DataAccessor dataAccessor)
     {
-        _dataService = dataService;
+        _dataAccessor = dataAccessor;
     }
 
     [SlashCommand("register", "Register the current channel for the bot to be active in. Bot will only work in registered channels.")]
@@ -19,7 +19,7 @@ public class SlashCommandsModule : InteractionModuleBase
     {
         await DeferAsync();
 
-        _dataService.AddGuildChannelRegistration(new GuildChannelRegistration(Context.Guild.Id, Context.Channel.Id));
+        _dataAccessor.AddGuildChannelRegistration(new GuildChannelRegistration(Context.Guild.Id, Context.Channel.Id));
 
         await ModifyOriginalResponseAsync(m =>
         {
@@ -33,7 +33,7 @@ public class SlashCommandsModule : InteractionModuleBase
     {
         await DeferAsync();
 
-        _dataService.DeleteGuildChannelRegistration(Context.Guild.Id, Context.Channel.Id);
+        _dataAccessor.DeleteGuildChannelRegistration(Context.Guild.Id, Context.Channel.Id);
 
         await ModifyOriginalResponseAsync(m =>
         {

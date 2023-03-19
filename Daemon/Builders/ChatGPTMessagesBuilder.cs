@@ -6,7 +6,7 @@ using DiscordChatGPT.Models;
 
 namespace DiscordChatGPT.Factories;
 
-public class ChatGPTMessagesFactory
+public class ChatGPTMessagesBuilder
 {
     private readonly DiscordRestClient _restClient;
 
@@ -16,13 +16,13 @@ public class ChatGPTMessagesFactory
 
     private List<ChatGPTMessage> _messages;
 
-    public ChatGPTMessagesFactory(DiscordRestClient restClient)
+    public ChatGPTMessagesBuilder(DiscordRestClient restClient)
     {
         _messages = new List<ChatGPTMessage>();
         _restClient = restClient;
     }
 
-    public ChatGPTMessagesFactory WithPrompt(string prompt)
+    public ChatGPTMessagesBuilder WithPrompt(string prompt)
     {
         if (string.IsNullOrWhiteSpace(prompt))
         {
@@ -34,7 +34,7 @@ public class ChatGPTMessagesFactory
         return this;
     }
 
-    public ChatGPTMessagesFactory WithTailPrompt(string prompt)
+    public ChatGPTMessagesBuilder WithTailPrompt(string prompt)
     {
         if (string.IsNullOrWhiteSpace(prompt))
         {
@@ -46,20 +46,20 @@ public class ChatGPTMessagesFactory
         return this;
     }
 
-    public ChatGPTMessagesFactory InReplyTo(IMessage message)
+    public ChatGPTMessagesBuilder InReplyTo(IMessage message)
     {
         _messageToReplyTo = new ChatGPTMessage(ChatGPTRole.user, message.CleanContent, message.Timestamp);
 
         return this;
     }
 
-    public ChatGPTMessagesFactory FromChannel(ulong guildId, ulong channelId, int limit = 20)
+    public ChatGPTMessagesBuilder FromChannel(ulong guildId, ulong channelId, int limit = 20)
         => FromChannelAsync(guildId, channelId, limit).GetAwaiter().GetResult();
 
-    public ChatGPTMessagesFactory FromChannel(ISocketMessageChannel channel, int limit = 20)
+    public ChatGPTMessagesBuilder FromChannel(ISocketMessageChannel channel, int limit = 20)
         => FromChannelAsync(channel, limit).GetAwaiter().GetResult();
 
-    private async Task<ChatGPTMessagesFactory> FromChannelAsync(ulong guildId, ulong channelId, int limit)
+    private async Task<ChatGPTMessagesBuilder> FromChannelAsync(ulong guildId, ulong channelId, int limit)
     {
         var guild = await _restClient.GetGuildAsync(guildId);
         if (guild == null)
@@ -76,7 +76,7 @@ public class ChatGPTMessagesFactory
         return await FromChannelAsync(channel, limit);
     }
 
-    private async Task<ChatGPTMessagesFactory> FromChannelAsync(IMessageChannel channel, int limit)
+    private async Task<ChatGPTMessagesBuilder> FromChannelAsync(IMessageChannel channel, int limit)
     {
         var channelMessages = (await channel.GetMessagesAsync(limit)
             .FlattenAsync())

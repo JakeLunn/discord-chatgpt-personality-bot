@@ -1,4 +1,5 @@
 ﻿using Discord.Rest;
+using DiscordChatGPT.Daemon.Models;
 using DiscordChatGPT.Daemon.Orchestrators;
 using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Options;
@@ -130,13 +131,20 @@ public class TimedHostedService : IHostedService, IDisposable
         {
             ae.Handle((ex) =>
             {
-                if (ex is ResourceNotFoundException resourceNotFoundException)
+                if (ex is ResourceNotFoundException rex)
                 {
-                    if (typeof(RestChannel).IsAssignableFrom(resourceNotFoundException.ResourceType))
+                    if (typeof(RestChannel).IsAssignableFrom(rex.ResourceType))
                     {
-                        _logger.LogWarning("Deleting {Channel} due to {Exception}", resourceNotFoundException.ResourceId, nameof(ResourceNotFoundException));
-                        var toDelete = registrations.Single(r => r.ChannelId == resourceNotFoundException.ResourceId);
+                        _logger.LogWarning(rex, "Deleting {Channel} due to {Exception}", rex.ResourceId, nameof(ResourceNotFoundException));
+                        var toDelete = registrations.Single(r => r.ChannelId == rex.ResourceId);
                         _db.DeleteGuildChannelRegistration(toDelete.GuildId, toDelete.ChannelId);
+                        return true;
+                    }
+
+                    if (typeof(GuildPersonaFact).IsAssignableFrom(rex.ResourceType))
+                    {
+                        _logger.LogWarning(rex, "Resetting facts for guild {GuildId} back to default", rex.ResourceId);
+                        _botOrchestrator.ResetPersonaFactsToDefault(rex.ResourceId);
                         return true;
                     }
                 }

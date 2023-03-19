@@ -3,8 +3,11 @@ using Discord.Interactions;
 using Discord.Rest;
 using Discord.WebSocket;
 using DiscordChatGPT;
+using DiscordChatGPT.Daemon.Models;
 using DiscordChatGPT.Daemon.Options;
 using DiscordChatGPT.Daemon.Orchestrators;
+using DiscordChatGPT.Daemon.Utility;
+using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Modules;
 using DiscordChatGPT.Options;
 using DiscordChatGPT.Services;
@@ -12,6 +15,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Net.Http.Headers;
 using System.Reflection;
 
 using IHost host = Host.CreateDefaultBuilder(args)
@@ -43,6 +47,25 @@ using IHost host = Host.CreateDefaultBuilder(args)
             .Configure<TimedHostOptions>(host.Configuration.GetSection(nameof(TimedHostOptions)))
             .Configure<GlobalDiscordOptions>(host.Configuration.GetSection(nameof(GlobalDiscordOptions)))
             .Configure<OpenAiOptions>(host.Configuration.GetSection(nameof(OpenAiOptions)));
+
+        services.AddHttpClient<OpenAiAccessor>(c =>
+        {
+            var options = new OpenAiOptions();
+            host.Configuration.GetSection(nameof(OpenAiOptions)).Bind(options);
+
+            if (string.IsNullOrWhiteSpace(options.ApiKey))
+            {
+                throw new InvalidOperationException($"Application can't start without {nameof(options.ApiKey)}");
+            }
+
+            if (string.IsNullOrWhiteSpace(options.BaseUrl))
+            {
+                throw new InvalidOperationException($"Application can't start without {nameof(options.BaseUrl)}");
+            }
+
+            c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
+            c.BaseAddress = new Uri(options.BaseUrl);
+        }).AddPolicyHandler(HttpPolicies.GetRetryPolicy());
 
         services.AddLogging(builder =>
         {
@@ -98,7 +121,19 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
         if (message.MentionedUsers.Any(u => u.Id == socketClient.CurrentUser.Id))
         {
             var orc = serviceProvider.GetRequiredService<BotOrchestrator>();
-            await orc.RespondToMentionAsync(message);
+            try
+            {
+                await orc.RespondToMentionAsync(message);
+            }
+            catch (ResourceNotFoundException rex)
+            {
+                if (!typeof(GuildPersonaFact).IsAssignableFrom(rex.ResourceType)) throw;
+
+                logger.LogWarning(rex, "Resetting facts for Guild {GuildId} to default.", rex.ResourceId);
+                orc.ResetPersonaFactsToDefault(rex.ResourceId);
+                await message.Channel.SendMessageAsync($"{message.Author.Mention} Looks like this guild has no facts configured. I just added some default ones." +
+                    $"Go ahead and try your command again. If it doesn't work this time then idk.");
+            }
         }
 
         await Task.CompletedTask;
@@ -127,7 +162,6 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
         .CheckConnection();
 
     logger.LogInformation("DB Connection Check successful");
-
     
     logger.LogInformation("Initial Configuration Values Loaded:\n{Configuration}", string.Join("\n", config.AsEnumerable().OrderBy(a => a.Key)));
 
