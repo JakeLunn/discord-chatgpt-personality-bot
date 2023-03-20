@@ -1,8 +1,0 @@
-VERSION=$(cat ./version)
-
-DOCKER_TAG_BASE=jakelunn/alexgpt
-DOCKER_TAG=$DOCKER_TAG_BASE:$VERSION
-
-docker tag $DOCKER_TAG_BASE:$VERSION $DOCKER_TAG_BASE
-docker push $DOCKER_TAG
-docker push $DOCKER_TAG_BASE

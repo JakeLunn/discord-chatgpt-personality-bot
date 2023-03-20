@@ -1,0 +1,6 @@
+baseName: <your-docker-name> # e.g. mydocker/discordChatBot
+version: 1.0.0
+secrets:
+    discordToken: <your-discord-token>
+    openAiKey: <your-open-ai-key>
+    salt: <your-salt> # this can be any string.

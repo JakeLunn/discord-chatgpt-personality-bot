@@ -29,7 +29,7 @@ public class DataAccessor
         _logger.LogInformation("Database Connected... collections: {Collections}", string.Join(", ", collections));
     }
 
-    public GuildChannelRegistration AddGuildChannelRegistration(GuildChannelRegistration reg)
+    public (DataResult result, GuildChannelRegistration registration) AddGuildChannelRegistration(GuildChannelRegistration reg)
     {
         using var db = OpenCollection<GuildChannelRegistration>(out var collection,
             x => x.GuildId,
@@ -39,21 +39,21 @@ public class DataAccessor
         if (existing != null)
         {
             _logger.LogWarning("Guild Channel Registration already exists for {GuildId} and {ChannelId}", reg.GuildId, reg.ChannelId);
-            return existing;
+            return (DataResult.AlreadyExists, existing);
         }
 
         collection.Insert(reg);
 
-        return reg;
+        return (DataResult.Success, reg);
     }
 
-    public bool DeleteGuildChannelRegistration(ulong guildId, ulong channelId)
+    public DataResult DeleteGuildChannelRegistration(ulong guildId, ulong channelId)
     {
         using var db = OpenCollection<GuildChannelRegistration>(out var collection, 
             x => x.GuildId,
             x => x.ChannelId);
 
-        return collection.Delete($"{guildId}{channelId}");
+        return collection.Delete($"{guildId}{channelId}") ? DataResult.Success : DataResult.NotFound;
     }
 
     public bool IsChannelRegistered(ulong guildId, ulong channelId)
@@ -111,13 +111,15 @@ public class DataAccessor
         return collection.Insert(fact);
     }
 
-    public int BulkInsertPersonaFacts(IList<GuildPersonaFact> facts)
+    public (DataResult result, int recordCount) BulkInsertPersonaFacts(IList<GuildPersonaFact> facts)
     {
         using var db = OpenCollection<GuildPersonaFact>(out var collection,
             x => x.GuildId,
             x => x.Id);
 
-        return collection.InsertBulk(facts);
+        var recordCount = collection.InsertBulk(facts);
+
+        return (DataResult.Success, recordCount);
     }
 
     public bool DeletePersonaFact(int factId)
@@ -126,10 +128,12 @@ public class DataAccessor
         return collection.Delete(factId);
     }
 
-    public int DeleteAllPersonaFactsForGuild(ulong guildId)
+    public (DataResult result, int recordCount) DeleteAllPersonaFactsForGuild(ulong guildId)
     {
         using var db = OpenCollection<GuildPersonaFact>(out var collection, x => x.GuildId);
-        return collection.DeleteMany(x => x.GuildId == guildId);
+        var recordCount = collection.DeleteMany(x => x.GuildId == guildId);
+
+        return (recordCount > 0 ? DataResult.Success : DataResult.NotFound, recordCount);
     }
 
     private LiteDatabase? OpenCollection<T>(out ILiteCollection<T> collection, params Expression<Func<T, object>>[] ensureIndexes)

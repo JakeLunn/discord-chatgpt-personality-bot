@@ -19,7 +19,18 @@ public class SlashCommandsModule : InteractionModuleBase
     {
         await DeferAsync();
 
-        _dataAccessor.AddGuildChannelRegistration(new GuildChannelRegistration(Context.Guild.Id, Context.Channel.Id));
+        var (result, _) = _dataAccessor.AddGuildChannelRegistration(new GuildChannelRegistration(Context.Guild.Id, Context.Channel.Id));
+
+        if (result == DataResult.AlreadyExists)
+        {
+            await ModifyOriginalResponseAsync(m =>
+            {
+                m.Content = "Channel is already registered. To unregister channel, try /unregister";
+                m.Flags = MessageFlags.None;
+            });
+
+            return;
+        }
 
         await ModifyOriginalResponseAsync(m =>
         {
@@ -33,11 +44,21 @@ public class SlashCommandsModule : InteractionModuleBase
     {
         await DeferAsync();
 
-        _dataAccessor.DeleteGuildChannelRegistration(Context.Guild.Id, Context.Channel.Id);
+        var result = _dataAccessor.DeleteGuildChannelRegistration(Context.Guild.Id, Context.Channel.Id);
+        if (result == DataResult.Success)
+        {
+            await ModifyOriginalResponseAsync(m =>
+            {
+                m.Content = "Unregistered channel successfully. To re-register channel, try /register";
+                m.Flags = MessageFlags.None;
+            });
+
+            return;
+        }
 
         await ModifyOriginalResponseAsync(m =>
         {
-            m.Content = "Unregistered channel successfully. To re-register channel, try /register";
+            m.Content = "Channel was already unregistered. To register channel, try /register";
             m.Flags = MessageFlags.None;
         });
     }
