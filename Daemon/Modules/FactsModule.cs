@@ -91,6 +91,38 @@ public class FactsModule : InteractionModuleBase
         });
     }
 
+    [SlashCommand("update", "Update an existing fact")]
+    public async Task UpdateFactAsync(string id, string newFactText)
+    {
+        await DeferAsync(true);
+        var intId = _hashIds.Decode(id).Single();
+
+        var fact = _dataAccessor.GetPersonaFact(intId);
+        if (fact == null)
+        {
+            await ModifyOriginalResponseAsync(r =>
+            {
+                r.Content = $"Failed to find Fact {id}";
+            });
+            return;
+        }
+
+        fact.Fact = newFactText;
+        if (!_dataAccessor.UpdatePersonaFact(fact))
+        {
+            await ModifyOriginalResponseAsync(r =>
+            {
+                r.Content = $"Failed to update Fact {id} due to an unknown error.";
+            });
+            return;
+        }
+
+        await ModifyOriginalResponseAsync(r =>
+        {
+            r.Content = $"Updated Fact {id} to: {newFactText}";
+        });
+    }
+
     [SlashCommand("delete", "Delete a fact for the persona")]
     public async Task RemoveFactAsync([Summary("Id", "The associated fact Id")] string id)
     {

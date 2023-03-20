@@ -93,6 +93,15 @@ public class DataAccessor
             .ToList();
     }
 
+    public bool UpdatePersonaFact(GuildPersonaFact fact)
+    {
+        using var db = OpenCollection<GuildPersonaFact>(out var collection,
+            x => x.GuildId,
+            x => x.Id);
+
+        return collection.Update(fact);
+    }
+
     public int InsertPersonaFact(GuildPersonaFact fact)
     {
         using var db = OpenCollection<GuildPersonaFact>(out var collection, 
