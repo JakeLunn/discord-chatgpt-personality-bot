@@ -1,4 +1,5 @@
-﻿using Discord.Rest;
+﻿using Discord;
+using Discord.Rest;
 using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Options;
 using DiscordChatGPT.Utility;
@@ -23,31 +24,27 @@ public class EmoteOrchestrator
         _logger = logger;
     }
 
-    public string FormatDiscordMessage(string input)
-        => FormatDiscordMessageAsync(_options.Value.MasterGuildId, input).GetAwaiter().GetResult();
-
-    public string FormatDiscordMessage(ulong guildId, string input)
-        => FormatDiscordMessageAsync(guildId, input).GetAwaiter().GetResult();
-
-    public string ReplaceEmotes(string input)
-        => ReplaceEmotesAsync(_options.Value.MasterGuildId, input).GetAwaiter().GetResult();
-
-    public string ReplaceEmotes(ulong guildId, string input)
-        => ReplaceEmotesAsync(guildId, input).GetAwaiter().GetResult();
-
     public async Task<string> FormatDiscordMessageAsync(ulong guildId, string input)
     {
-        input = await ReplaceEmotesAsync(guildId, input);
+        (_, input) = await ReplaceEmotesAsync(guildId, input);
         input = input.TrimQuotations();
 
         return input;
     }
 
-    public async Task<string> ReplaceEmotesAsync(ulong guildId, string input)
+    public async Task<(int replacedCount, string result)> ReplaceEmotesAsync(ulong guildId, string input)
     {
+        using var _ = _logger.BeginScope("Replace Emotes");
+
         if (string.IsNullOrWhiteSpace(input))
         {
             throw new ArgumentNullException(nameof(input));
+        }
+
+        var masterGuild = await _restClient.GetGuildAsync(_options.Value.MasterGuildId);
+        if (masterGuild == null)
+        {
+            throw new InvalidOperationException($"Failed to find master guild {_options.Value.MasterGuildId}");
         }
 
         var guild = await _restClient.GetGuildAsync(guildId);
@@ -56,22 +53,42 @@ public class EmoteOrchestrator
             throw new ResourceNotFoundException(typeof(RestGuild), guildId);
         }
 
+        var masterGuildEmotes = await masterGuild.GetEmotesAsync();
+        if (masterGuildEmotes == null)
+        {
+            _logger.LogWarning("No emotes were found for the Master Guild {MasterGuildId}", _options.Value.MasterGuildId);
+            return (0, input);
+        }
+
         var emotes = await guild.GetEmotesAsync();
         if (emotes == null)
         {
             _logger.LogWarning("No emotes found for Guild {GuildId}", guildId);
-            return input;
+            return (0, input);
         }
 
-        foreach (Match match in Regex.Matches(input, @$"(?<!<a):({string.Join("|", emotes.Select(e => e.Name).ToArray())}):(?!\d+?>)"))
+        var combinedEmoteList = new List<Emote>();
+
+        combinedEmoteList.AddRange(masterGuildEmotes);
+        combinedEmoteList.AddRange(combinedEmoteList);
+
+        var count = 0;
+        var matches = Regex.Matches(input, @$"(?<!<a):({string.Join("|", combinedEmoteList.Select(e => e.Name).ToArray())}):(?!\d+?>)");
+
+        foreach (Match match in matches.Cast<Match>())
         {
-            var emote = emotes.FirstOrDefault(e => e.Name == match.Groups[1].Value);
+            var emote = combinedEmoteList.FirstOrDefault(e => e.Name == match.Groups[1].Value);
             if (emote != null)
             {
-                input = input.Replace(match.Value, $"<a:{emote.Name}:{emote.Id}>");
+                var emoteText = $"<a:{emote.Name}:{emote.Id}>";
+                _logger.LogInformation("Replacing instances of \"{MatchedText}\" with \"{EmoteText}\"", match.Value, emoteText);
+                input = Regex.Replace(input, @$"(?<!<a):({match.Groups[1].Value}):(?!\d+?>)", emoteText);
+                count++;
             }
         }
 
-        return input;
+        _logger.LogInformation("Replaced {Count} Emotes", count);
+
+        return (count, input);
     }
 }
