@@ -5,12 +5,8 @@ using DiscordChatGPT.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using RestSharp;
-using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text;
-using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace DiscordChatGPT.Services;
 
@@ -49,7 +45,7 @@ public class OpenAiAccessor
                 _httpClient.BaseAddress = newBaseAddress;
             }
         }
-        
+
         _options = newOptions;
     }
 
@@ -61,7 +57,7 @@ public class OpenAiAccessor
             messages = messages
         };
 
-        var response = await _httpClient.PostAsync("chat/completions", 
+        var response = await _httpClient.PostAsync("chat/completions",
             new StringContent(JsonConvert.SerializeObject(data), Encoding.UTF8, "application/json"));
 
         if (!response.IsSuccessStatusCode)

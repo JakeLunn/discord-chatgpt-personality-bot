@@ -21,14 +21,9 @@ public class ChatGPTPromptBuilder
 
     public string Build()
     {
-        if (_facts.Count == 0)
-        {
-            return Constants.DefaultPromptText;
-        }
-
         var sb = new StringBuilder($"You are a Discord user named {_name}. " +
             $"As {_name}, you must stricly follow these rules when responding to any future prompts:\n");
-        
+
         foreach (var fact in _facts)
         {
             sb.AppendLine($"- {fact}");

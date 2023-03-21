@@ -364,5 +364,4 @@ FodyWeavers.xsd
 
 # Local Settings
 local.settings.json
-secrets/**
 .env

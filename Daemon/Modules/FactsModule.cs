@@ -1,12 +1,12 @@
-﻿using Discord.Interactions;
-using Discord;
+﻿using Discord;
+using Discord.Interactions;
 using DiscordChatGPT.Daemon.Models;
 using DiscordChatGPT.Daemon.Orchestrators;
-using DiscordChatGPT.Services;
-using Microsoft.Extensions.Caching.Memory;
-using HashidsNet;
-using Microsoft.Extensions.Options;
 using DiscordChatGPT.Options;
+using DiscordChatGPT.Services;
+using HashidsNet;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 
 namespace DiscordChatGPT.Daemon.Modules;
 

@@ -12,6 +12,7 @@ services:
     container_name: gptbot
     restart: unless-stopped
     environment:
+      - TZ=America/Chicago
       - TimedHostOptions__TimedHostTimeSpan=00:30:00
       - TimedHostOptions__ChanceOutOf100=5
       - TimedHostOptions__SleepStartTimeSpan=21:00:00

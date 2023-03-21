@@ -9,8 +9,6 @@ using DiscordChatGPT.Models;
 using DiscordChatGPT.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using Polly;
-using System;
 
 namespace DiscordChatGPT.Daemon.Orchestrators;
 

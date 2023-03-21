@@ -49,7 +49,7 @@ public class DataAccessor
 
     public DataResult DeleteGuildChannelRegistration(ulong guildId, ulong channelId)
     {
-        using var db = OpenCollection<GuildChannelRegistration>(out var collection, 
+        using var db = OpenCollection<GuildChannelRegistration>(out var collection,
             x => x.GuildId,
             x => x.ChannelId);
 
@@ -104,7 +104,7 @@ public class DataAccessor
 
     public int InsertPersonaFact(GuildPersonaFact fact)
     {
-        using var db = OpenCollection<GuildPersonaFact>(out var collection, 
+        using var db = OpenCollection<GuildPersonaFact>(out var collection,
             x => x.GuildId,
             x => x.Id);
 
