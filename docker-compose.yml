@@ -1,0 +1,23 @@
+# Create a .env file in the same directory as this docker-compose.yml file
+# with the variables BASE_IMAGE_NAME, VERSION, DISCORD_TOKEN, OPENAI_API_KEY, and SALT
+version: '3.1'
+
+volumes:
+  litedb:
+
+services:
+  bot:
+    build: ./Daemon
+    image: ${BASE_IMAGE_NAME}:${VERSION}
+    container_name: gptbot
+    restart: unless-stopped
+    environment:
+      - TimedHostOptions__TimedHostTimeSpan=00:30:00
+      - TimedHostOptions__ChanceOutOf100=10
+      - TimedHostOptions__SleepStartTimeSpan=21:00:00
+      - TimedHostOptions__SleepEndTimeSpan=06:00:00
+      - Secrets__DiscordToken=${DISCORD_TOKEN}
+      - Secrets__OpenAiApiKey=${OPENAI_API_KEY}
+      - Secrets__Salt=${SALT}
+    volumes:
+      - litedb:/usr/share/LiteDB

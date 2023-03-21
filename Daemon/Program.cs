@@ -1,4 +1,6 @@
-﻿using Discord;
+﻿using Daemon.Options;
+using Daemon.Utility;
+using Discord;
 using Discord.Interactions;
 using Discord.Rest;
 using Discord.WebSocket;
@@ -15,6 +17,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Reflection;
 
@@ -22,7 +25,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration(config =>
     {
         config
-            .AddJsonFile("local.settings.json", true)
+            .AddJsonFile("local.settings.json", true, true)
             .AddEnvironmentVariables();
     })
     .ConfigureServices((host, services) =>
@@ -43,29 +46,15 @@ using IHost host = Host.CreateDefaultBuilder(args)
             .AddSingleton<BotOrchestrator>()
             .AddSingleton<EmoteOrchestrator>()
             .AddHostedService<TimedHostedService>()
-            .Configure<DataServiceOptions>(host.Configuration.GetSection(nameof(DataServiceOptions)))
             .Configure<TimedHostOptions>(host.Configuration.GetSection(nameof(TimedHostOptions)))
+            .Configure<DataServiceOptions>(host.Configuration.GetSection(nameof(DataServiceOptions)))
             .Configure<GlobalDiscordOptions>(host.Configuration.GetSection(nameof(GlobalDiscordOptions)))
-            .Configure<OpenAiOptions>(host.Configuration.GetSection(nameof(OpenAiOptions)));
+            .Configure<OpenAiOptions>(host.Configuration.GetSection(nameof(OpenAiOptions)))
+            .Configure<Secrets>(host.Configuration.GetSection(nameof(Secrets)));
 
-        services.AddHttpClient<OpenAiAccessor>(c =>
-        {
-            var options = new OpenAiOptions();
-            host.Configuration.GetSection(nameof(OpenAiOptions)).Bind(options);
-
-            if (string.IsNullOrWhiteSpace(options.ApiKey))
-            {
-                throw new InvalidOperationException($"Application can't start without {nameof(options.ApiKey)}");
-            }
-
-            if (string.IsNullOrWhiteSpace(options.BaseUrl))
-            {
-                throw new InvalidOperationException($"Application can't start without {nameof(options.BaseUrl)}");
-            }
-
-            c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
-            c.BaseAddress = new Uri(options.BaseUrl);
-        }).AddPolicyHandler(HttpPolicies.GetRetryPolicy());
+        services
+            .AddHttpClient<OpenAiAccessor>()
+            .AddPolicyHandler(HttpPolicies.GetRetryPolicy());
 
         services.AddLogging(builder =>
         {
@@ -144,13 +133,10 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
         await interactionService.RegisterCommandsGloballyAsync(true);
     };
 
-    var config = serviceProvider.GetRequiredService<IConfiguration>();
-
-    var token = config["GlobalDiscordOptions:Token"];
-    if (token == null)
-    {
-        throw new InvalidOperationException("Discord Token was not found");
-    }
+    var token = serviceProvider
+        .GetRequiredService<IConfiguration>()
+        .GetRequiredSection("Secrets")
+        .GetRequiredValue<string>("DiscordToken");
 
     await restClient.LoginAsync(Discord.TokenType.Bot, token);
     await socketClient.LoginAsync(Discord.TokenType.Bot, token);
@@ -163,7 +149,5 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
 
     logger.LogInformation("DB Connection Check successful");
     
-    logger.LogInformation("Initial Configuration Values Loaded:\n{Configuration}", string.Join("\n", config.AsEnumerable().OrderBy(a => a.Key)));
-
     await socketClient.StartAsync();
 }

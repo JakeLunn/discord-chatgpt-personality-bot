@@ -1,4 +1,5 @@
-﻿using DiscordChatGPT.Daemon.Models;
+﻿using Daemon.Options;
+using DiscordChatGPT.Daemon.Models;
 using DiscordChatGPT.Daemon.Options;
 using DiscordChatGPT.Models;
 using Microsoft.Extensions.Logging;
@@ -20,11 +21,15 @@ public class OpenAiAccessor
     private readonly HttpClient _httpClient;
 
     public OpenAiAccessor(IOptionsMonitor<OpenAiOptions> options,
+        IOptions<Secrets> secrets,
         ILogger<OpenAiAccessor> logger,
         HttpClient httpClient)
     {
         _options = options.CurrentValue;
         options.OnChange(OnOptionsChange);
+
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secrets.Value.OpenAiApiKey);
+        httpClient.BaseAddress = new Uri(_options.BaseUrl);
 
         _logger = logger;
         _httpClient = httpClient;
@@ -44,15 +49,7 @@ public class OpenAiAccessor
                 _httpClient.BaseAddress = newBaseAddress;
             }
         }
-
-        if (newOptions.ApiKey != _options.ApiKey)
-        {
-            _logger.LogInformation("Updating OpenAI ApiKey to new value [...{ApiKeyTruncated}]",
-                newOptions.ApiKey[^5..]);
-
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", newOptions.ApiKey);
-        }
-
+        
         _options = newOptions;
     }
 

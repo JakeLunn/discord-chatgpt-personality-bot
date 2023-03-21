@@ -6,7 +6,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "./pipeline/docker-build.sh",
+            "command": "docker compose build",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -15,19 +15,17 @@
         {
             "label": "publish",
             "type": "shell",
-            "command": "./pipeline/docker-publish.sh",
+            "command": "./.pipeline/publish.sh",
+            "dependsOn": "build",
             "group": {
                 "kind": "build",
                 "isDefault": false
-            },
-            "dependsOn": [
-                "build"
-            ]
+            }
         },
         {
             "label": "run",
             "type": "shell",
-            "command": "./pipeline/docker-run.sh",
+            "command": "docker compose up -d"
         }
     ]
 }
