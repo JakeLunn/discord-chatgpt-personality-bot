@@ -5,27 +5,57 @@
     "tasks": [
         {
             "label": "build",
-            "type": "shell",
-            "command": "docker compose build",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/Daemon/DiscordChatGPT.Daemon.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
         },
         {
             "label": "publish",
-            "type": "shell",
-            "command": "./publish.sh",
-            "dependsOn": "build",
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "publish",
+                "${workspaceFolder}/Daemon/DiscordChatGPT.Daemon.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
         },
         {
-            "label": "run",
+            "label": "docker compose build",
+            "type": "shell",
+            "command": "docker compose build"
+        },
+        {
+            "label": "docker compose up",
             "type": "shell",
             "command": "docker compose up -d"
+        },
+        {
+            "label": "docker push",
+            "type": "shell",
+            "command": "./publish.sh",
+            "dependsOn": [
+                "docker compose build"
+            ]
+        },
+        {
+            "label": "watch",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "watch",
+                "run",
+                "--project",
+                "${workspaceFolder}/Daemon/DiscordChatGPT.Daemon.csproj"
+            ],
+            "problemMatcher": "$msCompile"
         }
     ]
 }
