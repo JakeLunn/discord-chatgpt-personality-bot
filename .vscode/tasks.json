@@ -15,7 +15,7 @@
         {
             "label": "publish",
             "type": "shell",
-            "command": "./.pipeline/publish.sh",
+            "command": "./publish.sh",
             "dependsOn": "build",
             "group": {
                 "kind": "build",
