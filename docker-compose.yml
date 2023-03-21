@@ -13,9 +13,9 @@ services:
     restart: unless-stopped
     environment:
       - TimedHostOptions__TimedHostTimeSpan=00:30:00
-      - TimedHostOptions__ChanceOutOf100=10
+      - TimedHostOptions__ChanceOutOf100=5
       - TimedHostOptions__SleepStartTimeSpan=21:00:00
-      - TimedHostOptions__SleepEndTimeSpan=06:00:00
+      - TimedHostOptions__SleepEndTimeSpan=09:00:00
       - Secrets__DiscordToken=${DISCORD_TOKEN}
       - Secrets__OpenAiApiKey=${OPENAI_API_KEY}
       - Secrets__Salt=${SALT}
