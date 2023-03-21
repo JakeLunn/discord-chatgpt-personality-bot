@@ -64,8 +64,7 @@ The above facts are the default for new guilds but can be managed by the guild t
 3. In `/Daemon` create a `local.settings.json` file with the following template:
     ```json
     {
-        "Secrets":
-        {
+        "Secrets": {
             "DiscordToken": "your-discord-token",
             "OpenAiApiKey": "your-open-ai-api-key",
             "Salt": "your-custom-salt"
