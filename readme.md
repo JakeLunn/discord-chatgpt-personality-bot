@@ -25,6 +25,12 @@ An example of facts:
 
 The above facts are the default for new guilds but can be managed by the guild through `/facts` commands.
 
+## Example Screenshots
+![](./docs/images/screenshot-1.png)
+![](./docs/images/screenshot-2.png)
+![](./docs/images/screenshot-3.png)
+![](./docs/images/screenshot-4.png)
+
 # Setup
 > This repo is currently designed to use **GPT-4**, as GPT-4 adheres to system prompts much much better than GPT-3.5. However, you might not immediately be granted access to GPT-4. If this is the case you can set the environment variable `OpenAiOptions__Model=gpt-3.5-turbo` or any other available model value. You may need to re-test the default prompts after making this change. Set this environment variable in the `docker-compose.yml` file at the root of the repo.
 
