@@ -72,7 +72,6 @@ public class FactsModule : InteractionModuleBase
     [SlashCommand("add", "Add a new fact to the persona")]
     public async Task AddFactAsync(
         [Summary("Fact", "e.g. \"You are a fan of K-Pop\"")]
-            [MaxLength(140)]
             string fact)
     {
         await DeferAsync(true);

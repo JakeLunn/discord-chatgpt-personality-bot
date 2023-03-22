@@ -12,3 +12,12 @@ public static class StringExtensions
         return input;
     }
 }
+
+public static class EnvironmentExtensions
+{
+    public static bool TryGetEnvironmentVariable(string name, out string? value)
+    {
+        value = Environment.GetEnvironmentVariable(name);
+        return !string.IsNullOrWhiteSpace(value);
+    }
+}

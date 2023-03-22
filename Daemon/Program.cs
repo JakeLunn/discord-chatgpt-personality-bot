@@ -13,6 +13,7 @@ using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Modules;
 using DiscordChatGPT.Options;
 using DiscordChatGPT.Services;
+using DiscordChatGPT.Utility;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -77,6 +78,11 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
     var socketClient = serviceProvider.GetRequiredService<DiscordSocketClient>();
     var restClient = serviceProvider.GetRequiredService<DiscordRestClient>();
     var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+
+    if (EnvironmentExtensions.TryGetEnvironmentVariable("GPTBOT_VERSION", out var version))
+    {
+        logger.LogInformation("GPTBOT_VERSION={VERSION}", version);
+    }
 
     var interactionService = new InteractionService(socketClient);
 
