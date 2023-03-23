@@ -84,9 +84,10 @@ public class ChatGPTMessagesBuilder
 
         foreach (var message in channelMessages)
         {
+            var isMe = message.Author.Id == _restClient.CurrentUser.Id;
             _messages.Add(new ChatGPTMessage(
-                    ChatGPTRole.user,
-                    message.CleanContent,
+                    isMe ? ChatGPTRole.assistant : ChatGPTRole.user,
+                    $"{(isMe ? message.Author.Username + ": " : string.Empty)}{message.CleanContent}",
                     message.Timestamp));
         }
 

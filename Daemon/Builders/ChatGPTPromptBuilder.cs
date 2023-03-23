@@ -22,6 +22,7 @@ public class ChatGPTPromptBuilder
     public string Build()
     {
         var sb = new StringBuilder($"You are a Discord user named {_name}. " +
+            $"Never start your messages with \"{_name}:\". " +
             $"As {_name}, you must stricly follow these rules when responding to any future prompts:\n");
 
         foreach (var fact in _facts)

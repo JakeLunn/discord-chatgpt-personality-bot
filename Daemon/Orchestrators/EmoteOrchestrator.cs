@@ -32,6 +32,21 @@ public class EmoteOrchestrator
     {
         (_, input) = await ReplaceEmotesAsync(guildId, input);
         input = input.TrimQuotations();
+        input = TrimUsernameStart(input);
+        return input;
+    }
+
+    private string TrimUsernameStart(string input)
+    {
+        var username = $"{_restClient.CurrentUser.Username}:";
+        if (!input.StartsWith(username))
+        {
+            _logger.LogInformation("Input does not start with username \"{Username}\"", username);
+            return input;
+        }
+
+        _logger.LogInformation("Removing username \"{Username}\" from start of input", username);
+        input = input[username.Length..];
 
         return input;
     }

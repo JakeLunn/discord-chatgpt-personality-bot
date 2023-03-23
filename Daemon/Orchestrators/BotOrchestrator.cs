@@ -136,6 +136,8 @@ public class BotOrchestrator
         {
             var result = await _openAiAccessor.PostChatGPT(messages);
 
+            _logger.LogInformation("Response Content from OpenAI API: {Content}", result.Content);
+
             var content = await _emoteOrchestrator.FormatDiscordMessageAsync(guildId, result.Content);
 
             _logger.LogInformation("Sending: {Message}", content);
