@@ -8,6 +8,7 @@ using DiscordChatGPT;
 using DiscordChatGPT.Daemon.Models;
 using DiscordChatGPT.Daemon.Options;
 using DiscordChatGPT.Daemon.Orchestrators;
+using DiscordChatGPT.Daemon.Startup;
 using DiscordChatGPT.Daemon.Utility;
 using DiscordChatGPT.Exceptions;
 using DiscordChatGPT.Modules;
@@ -41,19 +42,22 @@ using IHost host = Host.CreateDefaultBuilder(args)
             .AddSingleton(new DiscordSocketClient(socketConfig))
             .AddSingleton<DiscordRestClient>()
             .AddSingleton<DataAccessor>()
-            .AddSingleton<OpenAiAccessor>()
-            .AddSingleton<BotOrchestrator>()
-            .AddSingleton<EmoteOrchestrator>()
-            .AddHostedService<TimedHostedService>()
+            .AddScoped<OpenAiAccessor>()
+            .AddHostedService<TimedHostedService>();
+
+        services
+            .AddScopedInNamespace("DiscordChatGPT.Daemon.Orchestrators");
+
+        services
+            .AddHttpClient<OpenAiAccessor>()
+            .AddPolicyHandler(HttpPolicies.GetRetryPolicy());
+
+        services
             .Configure<TimedHostOptions>(host.Configuration.GetSection(nameof(TimedHostOptions)))
             .Configure<DataServiceOptions>(host.Configuration.GetSection(nameof(DataServiceOptions)))
             .Configure<GlobalDiscordOptions>(host.Configuration.GetSection(nameof(GlobalDiscordOptions)))
             .Configure<OpenAiOptions>(host.Configuration.GetSection(nameof(OpenAiOptions)))
             .Configure<Secrets>(host.Configuration.GetSection(nameof(Secrets)));
-
-        services
-            .AddHttpClient<OpenAiAccessor>()
-            .AddPolicyHandler(HttpPolicies.GetRetryPolicy());
 
         services.AddLogging(builder =>
         {
@@ -108,28 +112,39 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
         }
     };
 
-    socketClient.MessageReceived += async message =>
+    socketClient.MessageReceived += message =>
     {
-        // Message is @ the bot
-        if (message.MentionedUsers.Any(u => u.Id == socketClient.CurrentUser.Id))
+        if (message.Author.IsBot)
         {
-            var orc = serviceProvider.GetRequiredService<BotOrchestrator>();
-            try
-            {
-                await orc.RespondToMentionAsync(message);
-            }
-            catch (ResourceNotFoundException rex)
-            {
-                if (!typeof(GuildPersonaFact).IsAssignableFrom(rex.ResourceType)) throw;
-
-                logger.LogWarning(rex, "Resetting facts for Guild {GuildId} to default.", rex.ResourceId);
-                orc.ResetPersonaFactsToDefault(rex.ResourceId);
-                await message.Channel.SendMessageAsync($"{message.Author.Mention} Looks like this guild has no facts configured. I just added some default ones." +
-                    $"Go ahead and try your command again. If it doesn't work this time then idk.");
-            }
+            logger.LogDebug("Ignoring message from bot {BotName}", message.Author.Username);
+            return Task.CompletedTask;
         }
 
-        await Task.CompletedTask;
+        ThreadPool.QueueUserWorkItem(async _ => {
+            // Message is @ the bot
+            if (message.MentionedUsers.Any(u => u.Id == socketClient.CurrentUser.Id))
+            {
+                using (var scope = serviceProvider.CreateScope())
+                {
+                    var orc = scope.ServiceProvider.GetRequiredService<BotOrchestrator>();
+                    try
+                    {
+                        await orc.RespondToMentionAsync(message);
+                    }
+                    catch (ResourceNotFoundException rex)
+                    {
+                        if (!typeof(GuildPersonaFact).IsAssignableFrom(rex.ResourceType)) throw;
+
+                        logger.LogWarning(rex, "Resetting facts for Guild {GuildId} to default.", rex.ResourceId);
+                        orc.ResetPersonaFactsToDefault(rex.ResourceId);
+                        await message.Channel.SendMessageAsync($"{message.Author.Mention} Looks like this guild has no facts configured. I just added some default ones." +
+                            $"Go ahead and try your command again. If it doesn't work this time then idk.");
+                    }
+                }
+            }
+        });
+
+        return Task.CompletedTask;
     };
 
     socketClient.Ready += async () =>

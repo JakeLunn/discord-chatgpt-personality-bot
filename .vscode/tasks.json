@@ -35,7 +35,10 @@
         {
             "label": "docker compose up",
             "type": "shell",
-            "command": "docker compose up -d"
+            "command": "docker compose up -d",
+            "dependsOn": [
+                "docker compose build"
+            ]
         },
         {
             "label": "docker push",
