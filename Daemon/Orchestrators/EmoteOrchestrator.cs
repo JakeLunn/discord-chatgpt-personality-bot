@@ -34,7 +34,7 @@ public class EmoteOrchestrator
         input = TrimUsernameStart(input);
         input = RemoveNumberStrings(input);
         (_, input) = await ReplaceEmotesAsync(guildId, input);
-        
+
         return input;
     }
 
@@ -72,7 +72,7 @@ public class EmoteOrchestrator
 
         var count = 0;
         var regex = @$"(?<!<a):({string.Join("|", combinedEmoteList.Select(e => e.Name).ToArray())}):(?!\d+?>)";
-        
+
         _logger.LogInformation("Searching for emotes matching regex \"{Regex}\"", regex);
         var matches = Regex.Matches(input, regex);
 
@@ -140,7 +140,7 @@ public class EmoteOrchestrator
             .CreateEntry($"EmoteReplace:{guildId}")
             .SetValue(combinedEmotes)
             .SetAbsoluteExpiration(TimeSpan.FromHours(1));
-        
+
         return combinedEmotes;
     }
 }

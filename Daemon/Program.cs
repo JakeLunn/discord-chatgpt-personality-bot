@@ -102,7 +102,7 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
 
     socketClient.Log += msg =>
     {
-        switch(msg.Severity)
+        switch (msg.Severity)
         {
             case Discord.LogSeverity.Critical:
             case Discord.LogSeverity.Error:
@@ -133,7 +133,8 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
 
         var ctx = new SocketInteractionContext(socketClient, interaction);
 
-        ThreadPool.QueueUserWorkItem(async _ => {
+        ThreadPool.QueueUserWorkItem(async _ =>
+        {
             using (logger.BeginScope(interaction.Data.Name))
             {
                 await interactionService.ExecuteCommandAsync(ctx, serviceProvider);
@@ -151,7 +152,8 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
             return Task.CompletedTask;
         }
 
-        ThreadPool.QueueUserWorkItem(async _ => {
+        ThreadPool.QueueUserWorkItem(async _ =>
+        {
             // Message is @ the bot
             if (message.MentionedUsers.Any(u => u.Id == socketClient.CurrentUser.Id))
             {
@@ -172,7 +174,7 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
                             $"Go ahead and try your command again. If it doesn't work this time then idk.");
 
                         orc.ResetPersonaFactsToDefault(rex.ResourceId);
-                        
+
                         await msgTask;
                     }
                 }

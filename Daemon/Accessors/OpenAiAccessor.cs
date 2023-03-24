@@ -59,7 +59,7 @@ public class OpenAiAccessor
 
         var response = await _httpClient.PostAsync("chat/completions",
             new StringContent(JsonConvert.SerializeObject(data), Encoding.UTF8, "application/json"));
-        
+
         var responseContentTask = response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {

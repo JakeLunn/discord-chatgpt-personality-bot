@@ -91,7 +91,7 @@ public class FactsModule : InteractionModuleBase
         {
             r.Content = $"Fact has been added with Id {_hashIds.Encode(id)}.";
         });
-        
+
     }
 
     [SlashCommand("update", "Update an existing fact")]
