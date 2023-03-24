@@ -30,9 +30,11 @@ public class EmoteOrchestrator
 
     public async Task<string> FormatDiscordMessageAsync(ulong guildId, string input)
     {
-        (_, input) = await ReplaceEmotesAsync(guildId, input);
         input = input.TrimQuotations();
         input = TrimUsernameStart(input);
+        input = RemoveNumberStrings(input);
+        (_, input) = await ReplaceEmotesAsync(guildId, input);
+        
         return input;
     }
 
@@ -49,6 +51,12 @@ public class EmoteOrchestrator
         input = input[username.Length..];
 
         return input;
+    }
+
+    private string RemoveNumberStrings(string input)
+    {
+        var regex = @"\d{8,22}";
+        return Regex.Replace(input, regex, string.Empty);
     }
 
     public async Task<(int replacedCount, string result)> ReplaceEmotesAsync(ulong guildId, string input)
