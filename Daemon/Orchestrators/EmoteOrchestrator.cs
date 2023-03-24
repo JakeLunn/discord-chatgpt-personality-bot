@@ -96,52 +96,37 @@ public class EmoteOrchestrator
 
     private async Task<List<GuildEmote>> GetEmotesAsync(ulong guildId)
     {
-        using var _ = _logger.BeginScope("Get Emotes From Guild");
+        var getGuildEmotesTask = GetEmotesForGuildAsync(guildId);
+        var getMasterGuildEmotesTask = GetEmotesForGuildAsync(_options.Value.MasterGuildId);
 
-        if (_cache.TryGetValue<List<GuildEmote>>($"EmoteReplace:{guildId}", out var cachedResult))
+        await Task.WhenAll(getGuildEmotesTask, getMasterGuildEmotesTask);
+
+        return new List<GuildEmote>((await getGuildEmotesTask).Concat(await getMasterGuildEmotesTask));
+    }
+
+    private async Task<List<GuildEmote>> GetEmotesForGuildAsync(ulong guildId)
+    {
+        var emotes = await _cache.GetOrCreateAsync($"EmoteReplace:{guildId}", async entry =>
         {
-            _logger.LogInformation("Using cached result for \"{GuildId}\"", guildId);
-            return cachedResult!;
-        }
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
 
-        var guild = await _restClient.GetGuildAsync(guildId);
-        if (guild == null)
-        {
-            throw new ResourceNotFoundException(typeof(RestGuild), guildId);
-        }
+            var guild = await _restClient.GetGuildAsync(guildId);
+            if (guild == null)
+            {
+                throw new ResourceNotFoundException(typeof(RestGuild), guildId);
+            }
 
-        var masterGuild = await _restClient.GetGuildAsync(_options.Value.MasterGuildId);
-        if (masterGuild == null)
-        {
-            throw new ResourceNotFoundException(typeof(RestGuild), _options.Value.MasterGuildId);
-        }
+            var emotes = (await guild.GetEmotesAsync()).ToList();
+            if (emotes == null)
+            {
+                _logger.LogWarning("No emotes found for Guild {GuildId}", guildId);
+                emotes = new List<GuildEmote>();
+            }
 
-        var emotes = await guild.GetEmotesAsync();
-        if (emotes == null)
-        {
-            _logger.LogWarning("No emotes found for Guild {GuildId}", guildId);
-            emotes = new List<GuildEmote>();
-        }
+            return emotes;
+        });
 
-        var masterGuildEmotes = await masterGuild.GetEmotesAsync();
-        if (masterGuildEmotes == null)
-        {
-            _logger.LogWarning("No emotes found for Guild {GuildId}", guildId);
-            masterGuildEmotes = new List<GuildEmote>();
-        }
-
-        var combinedEmotes = new List<GuildEmote>();
-
-        combinedEmotes.AddRange(emotes);
-        combinedEmotes.AddRange(masterGuildEmotes);
-
-        _logger.LogInformation("Caching result for \"{GuildId}\"", guildId);
-        _cache
-            .CreateEntry($"EmoteReplace:{guildId}")
-            .SetValue(combinedEmotes)
-            .SetAbsoluteExpiration(TimeSpan.FromHours(1));
-
-        return combinedEmotes;
+        return emotes!;
     }
 }
 
