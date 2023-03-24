@@ -22,56 +22,56 @@ using Microsoft.Extensions.Logging;
 using System.Reflection;
 
 using IHost host = Host.CreateDefaultBuilder(args)
-    .ConfigureAppConfiguration(config =>
+.ConfigureAppConfiguration(config =>
+{
+    config
+        .AddJsonFile("local.settings.json", true, true)
+        .AddEnvironmentVariables();
+})
+.ConfigureServices((host, services) =>
+{
+    var socketConfig = new DiscordSocketConfig()
     {
-        config
-            .AddJsonFile("local.settings.json", true, true)
-            .AddEnvironmentVariables();
-    })
-    .ConfigureServices((host, services) =>
+        GatewayIntents = GatewayIntents.MessageContent | GatewayIntents.AllUnprivileged
+    };
+
+    services
+        .AddMemoryCache()
+        .AddSingleton(socketConfig)
+        .AddSingleton<SlashCommandsModule>()
+        .AddSingleton(new DiscordSocketClient(socketConfig))
+        .AddSingleton<DiscordRestClient>()
+        .AddSingleton<DataAccessor>()
+        .AddScoped<OpenAiAccessor>()
+        .AddHostedService<TimedHostedService>();
+
+    services
+        .AddScopedInNamespace("DiscordChatGPT.Daemon.Orchestrators");
+
+    services
+        .AddHttpClient<OpenAiAccessor>()
+        .AddPolicyHandler(HttpPolicies.GetRetryPolicy());
+
+    services
+        .Configure<TimedHostOptions>(host.Configuration.GetSection(nameof(TimedHostOptions)))
+        .Configure<DataServiceOptions>(host.Configuration.GetSection(nameof(DataServiceOptions)))
+        .Configure<GlobalDiscordOptions>(host.Configuration.GetSection(nameof(GlobalDiscordOptions)))
+        .Configure<OpenAiOptions>(host.Configuration.GetSection(nameof(OpenAiOptions)))
+        .Configure<Secrets>(host.Configuration.GetSection(nameof(Secrets)));
+
+    services.AddLogging(builder =>
     {
-        var socketConfig = new DiscordSocketConfig()
+        builder.AddSimpleConsole(options =>
         {
-            GatewayIntents = GatewayIntents.MessageContent | GatewayIntents.AllUnprivileged
-        };
-
-        services
-            .AddMemoryCache()
-            .AddSingleton(socketConfig)
-            .AddSingleton<SlashCommandsModule>()
-            .AddSingleton(new DiscordSocketClient(socketConfig))
-            .AddSingleton<DiscordRestClient>()
-            .AddSingleton<DataAccessor>()
-            .AddScoped<OpenAiAccessor>()
-            .AddHostedService<TimedHostedService>();
-
-        services
-            .AddScopedInNamespace("DiscordChatGPT.Daemon.Orchestrators");
-
-        services
-            .AddHttpClient<OpenAiAccessor>()
-            .AddPolicyHandler(HttpPolicies.GetRetryPolicy());
-
-        services
-            .Configure<TimedHostOptions>(host.Configuration.GetSection(nameof(TimedHostOptions)))
-            .Configure<DataServiceOptions>(host.Configuration.GetSection(nameof(DataServiceOptions)))
-            .Configure<GlobalDiscordOptions>(host.Configuration.GetSection(nameof(GlobalDiscordOptions)))
-            .Configure<OpenAiOptions>(host.Configuration.GetSection(nameof(OpenAiOptions)))
-            .Configure<Secrets>(host.Configuration.GetSection(nameof(Secrets)));
-
-        services.AddLogging(builder =>
-        {
-            builder.AddSimpleConsole(options =>
-            {
-                options.IncludeScopes = true;
-                options.SingleLine = true;
-                options.TimestampFormat = "MM/dd hh:mm:ss tt ";
-            });
-
-            builder.AddFile("DiscordChatGPT{Date}");
+            options.IncludeScopes = true;
+            options.SingleLine = true;
+            options.TimestampFormat = "MM/dd hh:mm:ss tt ";
         });
-    })
-    .Build();
+
+        builder.AddFile("DiscordChatGPT{Date}");
+    });
+})
+.Build();
 
 await ServiceLifetime(host.Services);
 
@@ -85,31 +85,62 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
 
     if (EnvironmentExtensions.TryGetEnvironmentVariable("GPTBOT_VERSION", out var version))
     {
-        logger.LogInformation("GPTBOT_VERSION={VERSION}", version);
+        logger.LogInformation("BOT VERSION {VERSION}", version);
     }
 
     var interactionService = new InteractionService(socketClient);
 
-    await interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), serviceProvider);
+    var addModulesTask = interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), serviceProvider);
 
-    socketClient.Log += async (msg) =>
+    var token = serviceProvider
+        .GetRequiredService<IConfiguration>()
+        .GetRequiredSection("Secrets")
+        .GetRequiredValue<string>("DiscordToken");
+
+    var restLoginTask = restClient.LoginAsync(Discord.TokenType.Bot, token);
+    var socketLoginTask = socketClient.LoginAsync(Discord.TokenType.Bot, token);
+
+    socketClient.Log += msg =>
     {
-        if (msg.Severity == Discord.LogSeverity.Error)
+        switch(msg.Severity)
         {
-            logger.LogError(msg.Exception, msg.Message);
+            case Discord.LogSeverity.Critical:
+            case Discord.LogSeverity.Error:
+                logger.LogError(msg.Exception, msg.Message);
+                break;
+            case Discord.LogSeverity.Warning:
+                logger.LogWarning(msg.Exception, msg.Message);
+                break;
+            case Discord.LogSeverity.Info:
+                logger.LogInformation(msg.Exception, msg.Message);
+                break;
+            case Discord.LogSeverity.Verbose:
+            case Discord.LogSeverity.Debug:
+                logger.LogDebug(msg.Exception, msg.Message);
+                break;
         }
 
-        logger.LogInformation(msg.Message);
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     };
 
-    socketClient.SlashCommandExecuted += async interaction =>
+    socketClient.SlashCommandExecuted += interaction =>
     {
-        var ctx = new SocketInteractionContext(socketClient, interaction);
-        using (logger.BeginScope(interaction.Data.Name))
+        if (interaction.User.IsBot)
         {
-            await interactionService.ExecuteCommandAsync(ctx, serviceProvider);
+            logger.LogDebug("Ignoring interaction from bot {BotName}", interaction.User.Username);
+            return Task.CompletedTask;
         }
+
+        var ctx = new SocketInteractionContext(socketClient, interaction);
+
+        ThreadPool.QueueUserWorkItem(async _ => {
+            using (logger.BeginScope(interaction.Data.Name))
+            {
+                await interactionService.ExecuteCommandAsync(ctx, serviceProvider);
+            }
+        });
+
+        return Task.CompletedTask;
     };
 
     socketClient.MessageReceived += message =>
@@ -136,9 +167,13 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
                         if (!typeof(GuildPersonaFact).IsAssignableFrom(rex.ResourceType)) throw;
 
                         logger.LogWarning(rex, "Resetting facts for Guild {GuildId} to default.", rex.ResourceId);
-                        orc.ResetPersonaFactsToDefault(rex.ResourceId);
-                        await message.Channel.SendMessageAsync($"{message.Author.Mention} Looks like this guild has no facts configured. I just added some default ones." +
+
+                        var msgTask = message.Channel.SendMessageAsync($"{message.Author.Mention} Looks like this guild has no facts configured. I just added some default ones." +
                             $"Go ahead and try your command again. If it doesn't work this time then idk.");
+
+                        orc.ResetPersonaFactsToDefault(rex.ResourceId);
+                        
+                        await msgTask;
                     }
                 }
             }
@@ -152,14 +187,6 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
         await interactionService.RegisterCommandsGloballyAsync(true);
     };
 
-    var token = serviceProvider
-        .GetRequiredService<IConfiguration>()
-        .GetRequiredSection("Secrets")
-        .GetRequiredValue<string>("DiscordToken");
-
-    await restClient.LoginAsync(Discord.TokenType.Bot, token);
-    await socketClient.LoginAsync(Discord.TokenType.Bot, token);
-
     logger.LogInformation("Doing DB Connection Check");
 
     serviceProvider
@@ -168,5 +195,6 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
 
     logger.LogInformation("DB Connection Check successful");
 
+    await Task.WhenAll(addModulesTask, restLoginTask, socketLoginTask);
     await socketClient.StartAsync();
 }
