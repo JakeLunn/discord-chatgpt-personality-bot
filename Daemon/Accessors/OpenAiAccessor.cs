@@ -59,13 +59,14 @@ public class OpenAiAccessor
 
         var response = await _httpClient.PostAsync("chat/completions",
             new StringContent(JsonConvert.SerializeObject(data), Encoding.UTF8, "application/json"));
-
+        
+        var responseContentTask = response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {
             throw new HttpRequestException("Error returned from OpenAI API", null, response.StatusCode);
         }
 
-        var result = JsonConvert.DeserializeObject<OpenAiChatResponse>(await response.Content.ReadAsStringAsync());
+        var result = JsonConvert.DeserializeObject<OpenAiChatResponse>(await responseContentTask);
         var responseText = result?.Choices[0]?.Message?.Content?.TrimStart('\n');
         if (responseText == null)
         {

@@ -32,12 +32,13 @@ public class FactsModule : InteractionModuleBase
     [SlashCommand("reset", "Resets the persona back to the default set of facts")]
     public async Task ResetToDefaultAsync()
     {
-        await DeferAsync(true);
+        var deferTask = DeferAsync(true);
 
         _botOrchestrator.ResetPersonaFactsToDefault(Context.Guild.Id);
 
         _cache.Remove($"Facts|{Context.Guild.Id}");
 
+        await deferTask;
         await ModifyOriginalResponseAsync(r =>
         {
             r.Content = "Facts have been reset to default. Use `/facts list` to see the new list.";
@@ -47,7 +48,7 @@ public class FactsModule : InteractionModuleBase
     [SlashCommand("list", "List the facts for the persona with their identifiers")]
     public async Task ListFactsAsync()
     {
-        await DeferAsync(true);
+        var deferTask = DeferAsync(true);
 
         if (!_cache.TryGetValue($"Facts|{Context.Guild.Id}", out IList<GuildPersonaFact>? facts))
         {
@@ -63,6 +64,7 @@ public class FactsModule : InteractionModuleBase
             .WithDescription(description)
             .WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
 
+        await deferTask;
         await ModifyOriginalResponseAsync(r =>
         {
             r.Embed = embed.Build();
@@ -74,7 +76,7 @@ public class FactsModule : InteractionModuleBase
         [Summary("Fact", "e.g. \"You are a fan of K-Pop\"")]
             string fact)
     {
-        await DeferAsync(true);
+        var deferTask = DeferAsync(true);
 
         var id = _dataAccessor.InsertPersonaFact(new GuildPersonaFact
         {
@@ -84,21 +86,24 @@ public class FactsModule : InteractionModuleBase
 
         _cache.Remove($"Facts|{Context.Guild.Id}");
 
+        await deferTask;
         await ModifyOriginalResponseAsync(r =>
         {
             r.Content = $"Fact has been added with Id {_hashIds.Encode(id)}.";
         });
+        
     }
 
     [SlashCommand("update", "Update an existing fact")]
     public async Task UpdateFactAsync(string id, string newFactText)
     {
-        await DeferAsync(true);
+        var deferTask = DeferAsync(true);
         var intId = _hashIds.Decode(id).Single();
 
         var fact = _dataAccessor.GetPersonaFact(intId);
         if (fact == null)
         {
+            await deferTask;
             await ModifyOriginalResponseAsync(r =>
             {
                 r.Content = $"Failed to find Fact {id}";
@@ -109,6 +114,7 @@ public class FactsModule : InteractionModuleBase
         fact.Fact = newFactText;
         if (!_dataAccessor.UpdatePersonaFact(fact))
         {
+            await deferTask;
             await ModifyOriginalResponseAsync(r =>
             {
                 r.Content = $"Failed to update Fact {id} due to an unknown error.";
@@ -116,6 +122,7 @@ public class FactsModule : InteractionModuleBase
             return;
         }
 
+        await deferTask;
         await ModifyOriginalResponseAsync(r =>
         {
             r.Content = $"Updated Fact {id} to: {newFactText}";
@@ -125,12 +132,13 @@ public class FactsModule : InteractionModuleBase
     [SlashCommand("delete", "Delete a fact for the persona")]
     public async Task RemoveFactAsync([Summary("Id", "The associated fact Id")] string id)
     {
-        await DeferAsync(true);
+        var deferTask = DeferAsync(true);
         var intId = _hashIds.Decode(id).Single();
 
         var fact = _dataAccessor.GetPersonaFact(intId);
         if (fact == null || fact.GuildId != Context.Guild.Id)
         {
+            await deferTask;
             await ModifyOriginalResponseAsync(r =>
             {
                 r.Content = $"A fact with Id {id} was not found.";
@@ -141,6 +149,7 @@ public class FactsModule : InteractionModuleBase
         var didDelete = _dataAccessor.DeletePersonaFact(intId);
         if (!didDelete)
         {
+            await deferTask;
             await ModifyOriginalResponseAsync(r =>
             {
                 r.Content = $"Failed to delete fact due to an unknown error.";
@@ -150,6 +159,7 @@ public class FactsModule : InteractionModuleBase
 
         _cache.Remove($"Facts|{Context.Guild.Id}");
 
+        await deferTask;
         await ModifyOriginalResponseAsync(r =>
         {
             r.Content = $"Fact deleted.";
