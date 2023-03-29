@@ -54,6 +54,7 @@ public class OpenAiAccessor
         var data = new
         {
             model = _options.Model,
+            presence_penalty = 1,
             messages = messages
         };
 
