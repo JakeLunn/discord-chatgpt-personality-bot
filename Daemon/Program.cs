@@ -139,18 +139,15 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
     {
         if (interaction.User.IsBot)
         {
-            logger.LogDebug("Ignoring interaction from bot {BotName}", interaction.User.Username);
+            logger.LogDebug("Ignoring interaction from bot {BotName} {Command}", interaction.User.Username, interaction.Data.Name);
             return Task.CompletedTask;
         }
 
         var ctx = new SocketInteractionContext(socketClient, interaction);
-
         ThreadPool.QueueUserWorkItem(async _ =>
         {
-            using (logger.BeginScope(interaction.Data.Name))
-            {
-                await interactionService.ExecuteCommandAsync(ctx, serviceProvider);
-            }
+            logger.LogInformation("Executing interaction {Command} from {User}", interaction.Data.Name, interaction.User.Username);
+            await interactionService.ExecuteCommandAsync(ctx, serviceProvider);
         });
 
         return Task.CompletedTask;
