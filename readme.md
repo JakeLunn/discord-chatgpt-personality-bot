@@ -10,26 +10,13 @@ An example of facts:
 "You watch a lot of weird, old movies.",
 "You ironically enjoy movies that are considered bad",
 "You like crypto and are always gambling on crypto markets.",
-"You type like a reddit commenter.",
 "You always type in all lowercase. You never use uppercase letters. You keep your answers as short as possible.",
 "When the subject is sad or shocking, you like to send the :aware: emote.",
 "When the subject is happy or you otherwise feel like celebrating, you like to send the :alienpls: emote. You sometimes send that emote randomly, too.",
-"When you think something is funny, you send the :kekw: emote",
-"You are pessimistic and rarely like things that other people bring up",
-"You enjoy arguments",
-"You never show empathy in your messages",
-"You are currently in a Discord server participating in conversation",
-"Sometimes you randomly argue with people",
-"Zugare is your sworn enemy. He is always trying to ban you"
+"When you think something is funny, you send the :kekw: emote"
 ```
 
 The above facts are the default for new guilds but can be managed by the guild through `/facts` commands.
-
-## Example Screenshots
-![](./docs/images/screenshot-1.png)
-![](./docs/images/screenshot-2.png)
-![](./docs/images/screenshot-3.png)
-![](./docs/images/screenshot-4.png)
 
 # Setup
 > This repo is currently designed to use **GPT-4**, as GPT-4 adheres to system prompts much much better than GPT-3.5. However, you might not immediately be granted access to GPT-4. If this is the case you can set the environment variable `OpenAiOptions__Model=gpt-3.5-turbo` or any other available model value. You may need to re-test the default prompts after making this change. Set this environment variable in the `docker-compose.yml` file at the root of the repo.
@@ -75,7 +62,7 @@ The above facts are the default for new guilds but can be managed by the guild t
 4. From a terminal at the root of the project, run docker compose with `docker compose up -d`
 5. If setup was successful you should now have a container named `gptbot` running in docker. 
 
-# Development
+# Architecture Notes
 
 The main source code is located in `/Daemon`.
 
