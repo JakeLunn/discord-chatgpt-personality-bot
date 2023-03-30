@@ -72,6 +72,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
         if (!Debugger.IsAttached)
         {
             builder.AddFile("DiscordChatGPT{Date}.log");
+            builder.AddFilter(null, LogLevel.Information);
         }
     });
 })
@@ -89,20 +90,27 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
 
     if (EnvironmentExtensions.TryGetEnvironmentVariable("GPTBOT_VERSION", out var version))
     {
-        logger.LogInformation("BOT VERSION {VERSION}", version);
+        logger.LogInformation("Starting Daemon... BOT VERSION {VERSION}", version);
     }
 
     var interactionService = new InteractionService(socketClient);
-
-    var addModulesTask = interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), serviceProvider);
 
     var token = serviceProvider
         .GetRequiredService<IConfiguration>()
         .GetRequiredSection("Secrets")
         .GetRequiredValue<string>("DiscordToken");
 
-    var restLoginTask = restClient.LoginAsync(Discord.TokenType.Bot, token);
-    var socketLoginTask = socketClient.LoginAsync(Discord.TokenType.Bot, token);
+    socketClient.LoggedIn += () =>
+    {
+        logger.LogInformation("Discord client logged in");
+        return Task.CompletedTask;
+    };
+
+    socketClient.Disconnected += ex =>
+    {
+        logger.LogWarning(ex, "Discord client disconnected");
+        return Task.CompletedTask;
+    };
 
     socketClient.Log += msg =>
     {
@@ -191,6 +199,7 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
     socketClient.Ready += async () =>
     {
         await interactionService.RegisterCommandsGloballyAsync(true);
+        logger.LogInformation("Bot is ready and commands are registered.");
     };
 
     logger.LogInformation("Doing DB Connection Check");
@@ -200,6 +209,10 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
         .CheckConnection();
 
     logger.LogInformation("DB Connection Check successful");
+
+    var restLoginTask = restClient.LoginAsync(Discord.TokenType.Bot, token);
+    var socketLoginTask = socketClient.LoginAsync(Discord.TokenType.Bot, token);
+    var addModulesTask = interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), serviceProvider);
 
     await Task.WhenAll(addModulesTask, restLoginTask, socketLoginTask);
     await socketClient.StartAsync();
