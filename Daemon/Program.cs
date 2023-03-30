@@ -19,6 +19,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.Reflection;
 
 using IHost host = Host.CreateDefaultBuilder(args)
@@ -68,7 +69,10 @@ using IHost host = Host.CreateDefaultBuilder(args)
             options.TimestampFormat = "MM/dd hh:mm:ss tt ";
         });
 
-        builder.AddFile("DiscordChatGPT{Date}");
+        if (!Debugger.IsAttached)
+        {
+            builder.AddFile("DiscordChatGPT{Date}.log");
+        }
     });
 })
 .Build();
@@ -170,7 +174,7 @@ static async Task ServiceLifetime(IServiceProvider serviceProvider)
 
                         logger.LogWarning(rex, "Resetting facts for Guild {GuildId} to default.", rex.ResourceId);
 
-                        var msgTask = message.Channel.SendMessageAsync($"{message.Author.Mention} Looks like this guild has no facts configured. I just added some default ones." +
+                        var msgTask = message.Channel.SendMessageAsync($"{message.Author.Mention} Looks like this guild has no facts configured. I just added some default ones. " +
                             $"Go ahead and try your command again. If it doesn't work this time then idk.");
 
                         orc.ResetPersonaFactsToDefault(rex.ResourceId);
