@@ -14,7 +14,7 @@ services:
     environment:
       - GPTBOT_VERSION=${VERSION}
       - TZ=America/Chicago
-      - TimedHostOptions__TimedHostTimeSpan=00:30:00
+      - TimedHostOptions__TimerTimeSpan=01:30:00
       - TimedHostOptions__ChanceOutOf100=5
       - TimedHostOptions__SleepStartTimeSpan=21:00:00
       - TimedHostOptions__SleepEndTimeSpan=09:00:00
